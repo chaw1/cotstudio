@@ -72,7 +72,7 @@ const QueueInfoPanel: React.FC<QueueInfoPanelProps> = ({ queueInfo, onRefresh })
         return (
           <div className="w-32">
             <div className="text-xs text-gray-500 mb-1">
-              活跃: {activePercent.toFixed(0)}%
+              活跃: {activePercent.toFixed(2)}%
             </div>
             <Progress
               percent={activePercent}
@@ -81,7 +81,7 @@ const QueueInfoPanel: React.FC<QueueInfoPanelProps> = ({ queueInfo, onRefresh })
               strokeColor="#52c41a"
             />
             <div className="text-xs text-gray-500 mb-1 mt-1">
-              预定: {scheduledPercent.toFixed(0)}%
+              预定: {scheduledPercent.toFixed(2)}%
             </div>
             <Progress
               percent={scheduledPercent}

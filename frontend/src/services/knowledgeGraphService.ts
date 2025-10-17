@@ -40,7 +40,32 @@ class KnowledgeGraphService {
 
   // 获取知识图谱数据
   async getKnowledgeGraph(projectId: string, params?: KGQueryParams): Promise<KnowledgeGraphData> {
-    return api.get(`/kg/project/${projectId}/graph`, { params });
+    const response = await api.get(`/kg/project/${projectId}/graph`, { params });
+    // 后端返回 nodes 和 edges,需要转换为 entities 和 relations
+    const entities = (response.nodes || []).map((node: any) => ({
+      id: node.id,
+      label: node.label,
+      type: node.type,
+      properties: {
+        ...node.properties,
+        description: node.description,
+        confidence: node.confidence
+      }
+    }));
+    
+    const relations = (response.edges || []).map((edge: any) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      type: edge.type,
+      properties: {
+        ...edge.properties,
+        description: edge.description,
+        confidence: edge.confidence
+      }
+    }));
+    
+    return { entities, relations };
   }
 
   // 获取知识图谱统计信息

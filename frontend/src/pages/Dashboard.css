@@ -31,11 +31,19 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .contribution-graph-content {
   flex: 1;
   overflow: hidden;
+  min-height: 0;
+}
+
+/* 确保知识图谱容器有正确的尺寸 */
+.contribution-graph-container > div {
+  height: 100%;
+  width: 100%;
 }
 
 /* 知识图谱缩放控制 */

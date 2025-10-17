@@ -1,0 +1,21 @@
+# Docker Compose override for CPU-only MinerU deployment
+# 用于没有GPU的服务器，使用CPU模式运行MinerU
+
+services:
+  # MinerU OCR服务 - CPU版本
+  mineru:
+    build:
+      context: ./docker/mineru
+      dockerfile: Dockerfile.cpu  # 使用CPU版本的Dockerfile
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8001
+      - MINERU_DEVICE=cpu  # 使用CPU
+    # 移除GPU配置
+    deploy: {}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s  # CPU模式启动更慢

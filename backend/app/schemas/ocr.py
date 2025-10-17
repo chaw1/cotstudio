@@ -12,6 +12,7 @@ from app.models.slice import SliceType
 class OCREngineEnum(str, Enum):
     """OCR引擎枚举"""
     PADDLEOCR = "paddleocr"
+    MINERU = "mineru"
     FALLBACK = "fallback"
 
 
@@ -39,11 +40,22 @@ class OCREngineInfo(BaseModel):
     description: str
 
 
+class OCREngineConfig(BaseModel):
+    """OCR引擎配置"""
+    use_gpu: Optional[bool] = Field(True, description="是否使用GPU")
+    recognition_mode: Optional[str] = Field("fast", description="识别模式: fast(快速) 或 accurate(高精度)")
+    backend: Optional[str] = Field("pipeline", description="后端类型: pipeline 或 vlm-transformers")
+    device: Optional[str] = Field("cuda", description="设备类型: cuda 或 cpu")
+    batch_size: Optional[int] = Field(8, description="批处理大小")
+    output_format: Optional[str] = Field("markdown", description="输出格式")
+
+
 class OCRRequest(BaseModel):
     """OCR处理请求"""
     file_id: str = Field(..., description="文件ID")
     engine: OCREngineEnum = Field(default=OCREngineEnum.PADDLEOCR, description="OCR引擎")
     user_id: Optional[str] = Field(None, description="用户ID")
+    config: Optional[OCREngineConfig] = Field(None, description="引擎配置参数")
 
 
 class OCRResponse(BaseModel):

@@ -270,8 +270,34 @@ const UserContributionGraph: React.FC = () => {
     console.log('[UserContributionGraph] 图谱数据更新:', {
       nodes: graphData.nodes.length,
       edges: graphData.edges.length,
-      data: graphData
+      nodesData: graphData.nodes,
+      edgesData: graphData.edges
     });
+    
+    // 验证数据格式
+    if (graphData.nodes.length > 0) {
+      const firstNode = graphData.nodes[0];
+      console.log('[UserContributionGraph] 节点格式示例:', firstNode);
+      console.log('[UserContributionGraph] 节点必需属性检查:', {
+        hasId: !!firstNode.id,
+        hasLabel: !!firstNode.label,
+        hasSize: !!firstNode.size,
+        hasColor: !!firstNode.color,
+        hasType: !!firstNode.type
+      });
+    }
+    
+    if (graphData.edges.length > 0) {
+      const firstEdge = graphData.edges[0];
+      console.log('[UserContributionGraph] 边格式示例:', firstEdge);
+      console.log('[UserContributionGraph] 边必需属性检查:', {
+        hasId: !!firstEdge.id,
+        hasSource: !!firstEdge.source,
+        hasTarget: !!firstEdge.target,
+        hasColor: !!firstEdge.color,
+        hasType: !!firstEdge.type
+      });
+    }
   }, [graphData]);
 
   // 加载状态
@@ -381,7 +407,8 @@ const UserContributionGraph: React.FC = () => {
         border: '1px solid #f0f0f0',
         borderRadius: '6px',
         overflow: 'hidden',
-        minHeight: '280px'
+        minHeight: isMobile ? '280px' : '400px',
+        height: '100%'
       }}>
         {loading ? (
           <div style={{ 
@@ -396,17 +423,19 @@ const UserContributionGraph: React.FC = () => {
             <Text type="secondary">加载用户贡献数据...</Text>
           </div>
         ) : graphData.nodes.length > 0 ? (
-          <KnowledgeGraphViewer
-            projectId={null}
-            height={isMobile ? 280 : 350}
-            showControls={false} // 简化控制面板
-            showStats={false}
-            initialLayout="circle"
-            onNodeSelect={handleNodeSelect}
-            onEdgeSelect={handleEdgeSelect}
-            data={graphData}
-            disableDataFetch={true}
-          />
+          <div style={{ width: '100%', height: '100%' }}>
+            <KnowledgeGraphViewer
+              projectId={null}
+              height={isMobile ? 280 : 400}
+              showControls={false}
+              showStats={false}
+              initialLayout="circle"
+              onNodeSelect={handleNodeSelect}
+              onEdgeSelect={handleEdgeSelect}
+              data={graphData}
+              disableDataFetch={true}
+            />
+          </div>
         ) : (
           <div style={{ 
             display: 'flex', 

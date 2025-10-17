@@ -20,7 +20,7 @@ services:
     restart: unless-stopped
     environment:
       - DEBUG=false
-    command: celery -A app.worker worker --loglevel=info --concurrency=4
+    command: celery -A app.worker worker --loglevel=info --concurrency=4 -Q celery,ocr,llm,kg
 
   # 添加Nginx反向代理
   nginx:

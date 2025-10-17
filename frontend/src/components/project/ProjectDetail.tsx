@@ -54,8 +54,11 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({
     setFilesLoading(true);
     try {
       const fileList = await fileService.getProjectFiles(project.id);
+      console.log('📁 加载文件列表:', fileList);
+      console.log('📁 文件数量:', fileList.length);
       setFiles(fileList);
     } catch (error) {
+      console.error('❌ 加载文件列表失败:', error);
       message.error('加载文件列表失败');
     } finally {
       setFilesLoading(false);
@@ -68,22 +71,36 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({
 
   // 处理文件上传
   const handleFileUpload = async (uploadFiles: File[]) => {
+    console.log('📤 开始上传文件:', uploadFiles.map(f => f.name));
     const uploadPromises = uploadFiles.map(async (file) => {
       try {
-        await fileService.uploadFile(project.id, file);
+        const result = await fileService.uploadFile(project.id, file);
+        console.log('✅ 文件上传成功:', file.name, result);
+        return result;
       } catch (error) {
+        console.error('❌ 文件上传失败:', file.name, error);
         throw new Error(`上传文件 ${file.name} 失败`);
       }
     });
 
     await Promise.all(uploadPromises);
+    console.log('🔄 所有文件上传完成,开始刷新列表...');
     // 上传成功后刷新文件列表
     await loadFiles();
   };
 
   // 处理文件删除
   const handleFileDelete = async (fileId: string) => {
-    await fileService.deleteFile(fileId);
+    console.log('🗑️ 开始删除文件:', fileId);
+    try {
+      await fileService.deleteFile(fileId);
+      console.log('✅ 文件删除成功,开始刷新列表...');
+      // 删除成功后刷新文件列表
+      await loadFiles();
+    } catch (error) {
+      console.error('❌ 文件删除失败:', error);
+      throw error;
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -270,10 +287,15 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({
       key: 'knowledge-graph',
       label: '知识图谱',
       children: (
-        <div style={{ height: '600px' }}>
+        <div style={{ 
+          height: 'calc(100vh - 280px)',
+          minHeight: '700px',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
           <KnowledgeGraphViewer 
             projectId={project.id}
-            height={600}
+            height="100%"
           />
         </div>
       )

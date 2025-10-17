@@ -20,9 +20,9 @@ celery_app.conf.update(
     accept_content=["json"],
     result_serializer="json",
     
-    # 时区设置
-    timezone="UTC",
-    enable_utc=True,
+    # 时区设置 - 使用北京时间(UTC+8)
+    timezone="Asia/Shanghai",
+    enable_utc=False,
     
     # 任务路由
     task_routes={

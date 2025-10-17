@@ -493,15 +493,31 @@ class KnowledgeGraphService:
     
     def get_project_knowledge_graph(self, project_id: str) -> Dict[str, Any]:
         """获取项目的知识图谱数据"""
-        # 获取项目相关的实体 (修复: 使用distinct(KGEntity.id)避免JSON字段比较错误)
-        entities = self.db.query(KGEntity).join(KGExtraction).filter(
+        # 获取项目相关的实体ID（避免DISTINCT on JSON字段）
+        entity_ids = self.db.query(KGEntity.id).join(KGExtraction).filter(
             KGExtraction.project_id == project_id
-        ).distinct(KGEntity.id).all()
-
-        # 获取项目相关的关系 (修复: 使用distinct(KGRelation.id)避免JSON字段比较错误)
-        relations = self.db.query(KGRelation).join(KGExtraction).filter(
+        ).distinct().all()
+        
+        # 根据ID查询完整的实体数据
+        entities = []
+        if entity_ids:
+            entity_id_list = [e[0] for e in entity_ids]
+            entities = self.db.query(KGEntity).filter(
+                KGEntity.id.in_(entity_id_list)
+            ).all()
+        
+        # 获取项目相关的关系ID（避免DISTINCT on JSON字段）
+        relation_ids = self.db.query(KGRelation.id).join(KGExtraction).filter(
             KGExtraction.project_id == project_id
-        ).distinct(KGRelation.id).all()
+        ).distinct().all()
+        
+        # 根据ID查询完整的关系数据
+        relations = []
+        if relation_ids:
+            relation_id_list = [r[0] for r in relation_ids]
+            relations = self.db.query(KGRelation).filter(
+                KGRelation.id.in_(relation_id_list)
+            ).all()
         
         # 构建图数据
         nodes = []

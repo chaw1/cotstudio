@@ -39,6 +39,7 @@ pdf2image
 # HTTP客户端
 httpx
 aiofiles
+requests
 
 # LLM集成
 openai

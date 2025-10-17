@@ -55,11 +55,18 @@ def update_task_monitor(task_id: str, **kwargs):
 
 
 @celery_app.task(bind=True, name="app.workers.tasks.ocr_processing")
-def ocr_processing(self, file_id: str, engine: str = "paddleocr", user_id: str = None) -> Dict[str, Any]:
+def ocr_processing(self, file_id: str, engine: str = "paddleocr", user_id: str = None, engine_config: Dict[str, Any] = None) -> Dict[str, Any]:
     """
     OCR处理任务 - 集成OCR和切片功能
+    
+    Args:
+        file_id: 文件ID
+        engine: OCR引擎名称
+        user_id: 用户ID
+        engine_config: 引擎配置参数 (MinerU支持: use_gpu, recognition_mode, backend, device, batch_size等)
     """
     task_id = self.request.id
+    engine_config = engine_config or {}
     
     try:
         from app.core.database import SessionLocal
@@ -69,7 +76,7 @@ def ocr_processing(self, file_id: str, engine: str = "paddleocr", user_id: str =
         from app.core.minio_client import minio_client
         from app.models.file import OCRStatus
         
-        logger.info("Starting OCR processing", file_id=file_id, engine=engine, task_id=task_id)
+        logger.info("Starting OCR processing", file_id=file_id, engine=engine, engine_config=engine_config, task_id=task_id)
         
         # 更新任务监控状态
         update_task_monitor(task_id, status="PROGRESS", progress=0, message="Initializing OCR engine", started_at=datetime.utcnow())
@@ -122,7 +129,8 @@ def ocr_processing(self, file_id: str, engine: str = "paddleocr", user_id: str =
             document_structure = ocr_service.extract_text(
                 file_content=file_content,
                 filename=file_record.filename,
-                engine_name=engine
+                engine_name=engine,
+                engine_config=engine_config
             )
             
             # 更新OCR结果到文件记录

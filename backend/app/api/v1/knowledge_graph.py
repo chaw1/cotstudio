@@ -286,36 +286,34 @@ async def get_project_kg_stats(
     try:
         kg_service = KnowledgeGraphService(db)
         graph_data = kg_service.get_project_knowledge_graph(project_id)
-
-        # 统计实体类型分布
+        
+        # 统计实体类型
         entity_type_counts = {}
         for node in graph_data["nodes"]:
-            entity_type = node.get("type", "unknown")
+            entity_type = node.get("type", "未知")
             entity_type_counts[entity_type] = entity_type_counts.get(entity_type, 0) + 1
-
-        entity_types = [
-            {"type": type_name, "count": count}
-            for type_name, count in sorted(entity_type_counts.items(), key=lambda x: x[1], reverse=True)
-        ]
-
-        # 统计关系类型分布
+        
+        # 统计关系类型
         relation_type_counts = {}
         for edge in graph_data["edges"]:
-            relation_type = edge.get("type", "unknown")
+            relation_type = edge.get("type", "未知")
             relation_type_counts[relation_type] = relation_type_counts.get(relation_type, 0) + 1
-
-        relation_types = [
-            {"type": type_name, "count": count}
-            for type_name, count in sorted(relation_type_counts.items(), key=lambda x: x[1], reverse=True)
-        ]
-
+        
+        # 转换为数组格式
+        entity_types = [{"type": k, "count": v} for k, v in entity_type_counts.items()]
+        relation_types = [{"type": k, "count": v} for k, v in relation_type_counts.items()]
+        
+        # 按数量降序排列
+        entity_types.sort(key=lambda x: x["count"], reverse=True)
+        relation_types.sort(key=lambda x: x["count"], reverse=True)
+        
         return {
             "totalEntities": graph_data["stats"]["entity_count"],
             "totalRelations": graph_data["stats"]["relation_count"],
             "entityTypes": entity_types,
             "relationTypes": relation_types
         }
-
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取统计信息失败: {str(e)}")
 

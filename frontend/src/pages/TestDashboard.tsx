@@ -114,7 +114,7 @@ const TestDashboard: React.FC = () => {
             <>
               <div style={{ marginBottom: '16px' }}>
                 <Alert
-                  message={`测试完成: ${successCount}/${totalCount} 通过 (${successRate.toFixed(1)}%)`}
+                  message={`测试完成: ${successCount}/${totalCount} 通过 (${successRate.toFixed(2)}%)`}
                   type={successRate === 100 ? 'success' : successRate >= 50 ? 'warning' : 'error'}
                   showIcon
                 />

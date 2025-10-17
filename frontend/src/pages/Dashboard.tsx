@@ -14,7 +14,6 @@ import { useResponsiveBreakpoint } from '../hooks/useResponsiveBreakpoint';
 import { apiClient } from '../utils/apiClient';
 import SystemResourceMonitor from '../components/dashboard/SystemResourceMonitor';
 import UserContributionGraph from '../components/dashboard/UserContributionGraph';
-import DirectCytoscapeTest from '../components/DirectCytoscapeTest';
 import safeMessage from '../utils/message';
 import './Dashboard.css';
 
@@ -407,13 +406,6 @@ const Dashboard: React.FC = () => {
               </div>
             )}
           </Card>
-        </Col>
-      </Row>
-
-      {/* Cytoscape 测试组件 */}
-      <Row style={{ marginTop: '24px' }}>
-        <Col span={24}>
-          <DirectCytoscapeTest />
         </Col>
       </Row>
     </div>

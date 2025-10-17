@@ -16,6 +16,17 @@ import { useResponsiveBreakpoint } from '../../hooks/useResponsiveBreakpoint';
 
 const { Text } = Typography;
 
+interface GPU {
+  index: number;
+  name: string;
+  driver_version: string;
+  memory_total_mb: number;
+  memory_used_mb: number;
+  memory_free_mb: number;
+  utilization_percent: number;
+  temperature_c: number;
+}
+
 interface SystemResources {
   timestamp: string;
   cpu: {
@@ -56,6 +67,17 @@ interface SystemResources {
     active: number;
     failed: number;
     completed: number;
+  };
+  gpu?: {
+    available: boolean;
+    count?: number;
+    gpus?: GPU[];
+    cuda_version?: string;
+    cudnn_version?: string;
+    total_memory_gb?: number;
+    used_memory_gb?: number;
+    memory_percent?: number;
+    error?: string;
   };
   system: {
     boot_time: number;
@@ -370,7 +392,7 @@ const SystemResourceMonitor: React.FC = () => {
                 CPU使用率
               </Text>
               <Text style={{ fontSize: isMobile ? '12px' : '14px' }}>
-                {resources.cpu.percent.toFixed(1)}%
+                {resources.cpu.percent.toFixed(2)}%
               </Text>
             </div>
             <Progress 
@@ -426,6 +448,60 @@ const SystemResourceMonitor: React.FC = () => {
               showInfo={false}
             />
           </div>
+
+          {/* GPU状态 */}
+          {resources.gpu && resources.gpu.available && (
+            <div>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '8px' 
+              }}>
+                <Text style={{ fontSize: isMobile ? '12px' : '14px' }}>
+                  GPU显存使用率
+                </Text>
+                <Text style={{ fontSize: isMobile ? '12px' : '14px' }}>
+                  {resources.gpu.used_memory_gb?.toFixed(2)} GB / {resources.gpu.total_memory_gb?.toFixed(2)} GB
+                </Text>
+              </div>
+              <Progress 
+                percent={resources.gpu.memory_percent || 0} 
+                strokeColor={getProgressColor(resources.gpu.memory_percent || 0)}
+                size={isMobile ? 'small' : 'default'}
+                showInfo={false}
+              />
+              
+              {/* GPU详细信息 */}
+              <div style={{ 
+                marginTop: '8px',
+                padding: '8px',
+                background: '#fafafa',
+                borderRadius: '4px',
+                fontSize: isMobile ? '11px' : '12px'
+              }}>
+                <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                  {resources.gpu.gpus && resources.gpu.gpus.map((gpu) => (
+                    <div key={gpu.index}>
+                      <Text strong>GPU {gpu.index}: </Text>
+                      <Text>{gpu.name}</Text>
+                      <div style={{ marginLeft: '12px', color: '#666' }}>
+                        <Text>利用率: {gpu.utilization_percent}%</Text>
+                        {' | '}
+                        <Text>温度: {gpu.temperature_c}°C</Text>
+                      </div>
+                    </div>
+                  ))}
+                  {resources.gpu.cuda_version && resources.gpu.cuda_version !== 'N/A' && (
+                    <Text type="secondary">CUDA: {resources.gpu.cuda_version}</Text>
+                  )}
+                  {resources.gpu.cudnn_version && resources.gpu.cudnn_version !== 'N/A' && (
+                    <Text type="secondary"> | cuDNN: {resources.gpu.cudnn_version}</Text>
+                  )}
+                </Space>
+              </div>
+            </div>
+          )}
 
           {/* 任务队列状态 */}
           <div>

@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.services.file_service import file_service
 from app.services.slice_service import slice_service
 from app.services.ocr_service import ocr_service
+from app.services.mineru_import_service import mineru_import_service
 from app.workers.tasks import ocr_processing
 from app.models.file import OCRStatus
 from app.schemas.common import ResponseModel
@@ -34,6 +35,11 @@ async def get_ocr_engines():
                 name="paddleocr",
                 available="paddleocr" in available_engines,
                 description="PaddleOCR - 支持中英文OCR识别，适用于PDF和图像文件"
+            ),
+            OCREngineInfo(
+                name="mineru",
+                available="mineru" in available_engines,
+                description="MinerU - 高性能OCR引擎，支持复杂文档结构识别，适用于PDF、图像和扫描文档"
             ),
             OCREngineInfo(
                 name="fallback",
@@ -78,11 +84,31 @@ async def start_ocr_processing(
                 detail=f"OCR engine '{request.engine}' not available. Available engines: {available_engines}"
             )
         
+        # 准备引擎配置
+        engine_config = {}
+        if request.config:
+            engine_config = request.config.dict(exclude_none=True)
+            
+            # MinerU引擎特殊处理：根据use_gpu和recognition_mode自动设置backend和device
+            if request.engine == 'mineru':
+                use_gpu = engine_config.get('use_gpu', True)
+                recognition_mode = engine_config.get('recognition_mode', 'fast')
+                
+                # 设置device
+                engine_config['device'] = 'cuda' if use_gpu else 'cpu'
+                
+                # 设置backend
+                if recognition_mode == 'fast':
+                    engine_config['backend'] = 'pipeline'
+                elif recognition_mode == 'accurate':
+                    engine_config['backend'] = 'vlm-transformers'
+        
         # 启动异步OCR任务
         task = ocr_processing.delay(
             file_id=request.file_id,
             engine=request.engine,
-            user_id=request.user_id
+            user_id=request.user_id,
+            engine_config=engine_config
         )
         
         # 更新文件状态
@@ -146,6 +172,79 @@ async def get_ocr_status(
         raise HTTPException(status_code=500, detail=f"Failed to get OCR status: {str(e)}")
 
 
+@router.post("/stop/{file_id}", response_model=ResponseModel[Dict[str, Any]])
+async def stop_ocr_processing(
+    file_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    停止文件的OCR处理任务
+    """
+    try:
+        from celery.result import AsyncResult
+        from app.core.celery_app import celery_app
+        
+        # 验证文件存在
+        file_record = file_service.get(db, id=file_id)
+        if not file_record:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # 检查文件是否正在处理中
+        if file_record.ocr_status != OCRStatus.PROCESSING:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"File is not being processed. Current status: {file_record.ocr_status.value}"
+            )
+        
+        # 查找并停止该文件的Celery任务
+        # 使用Celery的inspect API查找正在运行的任务
+        from celery import current_app
+        inspect = current_app.control.inspect()
+        active_tasks = inspect.active()
+        
+        stopped_tasks = []
+        if active_tasks:
+            for worker, tasks in active_tasks.items():
+                for task in tasks:
+                    # 检查任务参数中是否包含该file_id
+                    task_args = task.get('args', [])
+                    task_kwargs = task.get('kwargs', {})
+                    
+                    # 检查任务名称和参数
+                    if task.get('name') == 'app.workers.tasks.ocr_processing':
+                        # 检查file_id是否匹配
+                        if (file_id in task_args or 
+                            task_kwargs.get('file_id') == file_id):
+                            # 停止任务
+                            task_id = task.get('id')
+                            celery_app.control.revoke(task_id, terminate=True, signal='SIGKILL')
+                            stopped_tasks.append(task_id)
+        
+        # 更新文件状态为失败
+        file_service.update(
+            db, 
+            db_obj=file_record, 
+            obj_in={"ocr_status": OCRStatus.FAILED, "ocr_result": "OCR processing stopped by user"}
+        )
+        
+        return ResponseModel(
+            success=True,
+            data={
+                "file_id": file_id,
+                "stopped_tasks": stopped_tasks,
+                "message": f"Stopped {len(stopped_tasks)} task(s)" if stopped_tasks else "No active tasks found for this file"
+            },
+            message="OCR processing stopped successfully"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to stop OCR processing: {str(e)}")
+
+
 @router.get("/slices/{file_id}", response_model=ResponseModel[FileSlicesResponse])
 async def get_file_slices(
     file_id: str,
@@ -179,7 +278,10 @@ async def get_file_slices(
                 page_number=slice_obj.page_number or 1,
                 sequence_number=slice_obj.sequence_number,
                 start_offset=slice_obj.start_offset,
-                end_offset=slice_obj.end_offset
+                end_offset=slice_obj.end_offset,
+                file_id=str(slice_obj.file_id),
+                created_at=slice_obj.created_at.isoformat() if hasattr(slice_obj.created_at, 'isoformat') else None,
+                updated_at=slice_obj.updated_at.isoformat() if hasattr(slice_obj.updated_at, 'isoformat') else None
             )
             for slice_obj in page_slices
         ]
@@ -412,3 +514,86 @@ async def get_project_slices(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get project slices: {str(e)}")
+
+
+@router.get("/mineru/documents", response_model=ResponseModel[List[Dict[str, Any]]])
+async def get_mineru_documents():
+    """
+    获取可用的MinerU解析文档列表
+    """
+    try:
+        documents = mineru_import_service.get_available_documents()
+        return ResponseModel(
+            success=True,
+            data=documents,
+            message=f"Found {len(documents)} MinerU parsed documents"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get MinerU documents: {str(e)}")
+
+
+@router.post("/mineru/import", response_model=ResponseModel[Dict[str, Any]])
+async def import_mineru_document(
+    document_name: str,
+    mode: str,
+    project_id: Optional[str] = None,
+    file_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    导入MinerU解析的文档到数据库
+    
+    Args:
+        document_name: 文档名称（output目录下的子目录名）
+        mode: 解析模式（vlm或pipeline）
+        project_id: 关联的项目ID（可选）
+        file_id: 关联的文件ID（可选）
+    """
+    try:
+        result = mineru_import_service.import_document(
+            db=db,
+            document_name=document_name,
+            mode=mode,
+            project_id=project_id,
+            file_id=file_id
+        )
+        
+        return ResponseModel(
+            success=True,
+            data=result,
+            message=f"Successfully imported {result['statistics']['imported_slices']} slices"
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to import MinerU document: {str(e)}")
+
+
+@router.post("/mineru/import-all", response_model=ResponseModel[List[Dict[str, Any]]])
+async def import_all_mineru_documents(
+    project_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    导入所有可用的MinerU解析文档
+    
+    Args:
+        project_id: 关联的项目ID（可选）
+    """
+    try:
+        results = mineru_import_service.import_all_documents(
+            db=db,
+            project_id=project_id
+        )
+        
+        success_count = len([r for r in results if 'error' not in r])
+        
+        return ResponseModel(
+            success=True,
+            data=results,
+            message=f"Successfully imported {success_count}/{len(results)} documents"
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to import MinerU documents: {str(e)}")

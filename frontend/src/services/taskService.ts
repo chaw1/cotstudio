@@ -111,6 +111,14 @@ export class TaskService {
   }
 
   /**
+   * 停止OCR任务
+   */
+  async stopOcrTask(fileId: string): Promise<any> {
+    const response = await api.post(`/ocr/stop/${fileId}`);
+    return response;
+  }
+
+  /**
    * 启动LLM任务
    */
   async startLlmTask(sliceId: string, provider: string = 'openai'): Promise<{

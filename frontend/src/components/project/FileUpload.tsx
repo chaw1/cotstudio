@@ -8,9 +8,9 @@ import {
   Space,
   Tag,
   Popconfirm,
-  message,
   Typography,
   Alert,
+  App,
 } from 'antd';
 import {
   UploadOutlined,
@@ -52,6 +52,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 }) => {
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
   const [dragOver, setDragOver] = useState(false);
+  const { message } = App.useApp();
 
   // 支持的文件类型
   const supportedTypes = [
@@ -153,6 +154,33 @@ const FileUpload: React.FC<FileUploadProps> = ({
   // 处理文件删除
   const handleDelete = async (fileId: string, filename: string) => {
     try {
+      // 检查文件是否正在OCR处理中
+      const fileToDelete = files.find(f => f.id === fileId);
+      const isProcessing = fileToDelete && (
+        fileToDelete.ocrStatus === 'processing' || 
+        fileToDelete.ocr_status === 'processing'
+      );
+
+      if (isProcessing) {
+        // 显示二次确认对话框
+        const confirmed = window.confirm(
+          `文件 "${filename}" 正在进行OCR处理中，删除将停止OCR进程。确定要删除吗？`
+        );
+        
+        if (!confirmed) {
+          return;
+        }
+
+        // 尝试停止OCR任务
+        try {
+          const { fileService: fileServiceImport } = await import('../../services/fileService');
+          await fileServiceImport.stopFileOCR(fileId);
+        } catch (error) {
+          console.warn('Failed to stop OCR before deleting:', error);
+          // 继续删除操作
+        }
+      }
+
       await onDelete(fileId);
       message.success(`文件 "${filename}" 删除成功`);
       onRefresh();

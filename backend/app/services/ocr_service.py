@@ -261,6 +261,133 @@ class PaddleOCREngine(BaseOCREngine):
             raise FileProcessingError(f"Image OCR failed: {str(e)}", "IMAGE_OCR_FAILED")
 
 
+class MinerUEngine(BaseOCREngine):
+    """MinerU 2.5引擎实现 - 高精度PDF文档解析"""
+    
+    def __init__(self, config: Dict[str, Any] = None):
+        super().__init__(config)
+        self._service_url = None
+        self._init_engine()
+    
+    def _init_engine(self):
+        """初始化MinerU引擎连接"""
+        try:
+            # MinerU作为独立微服务运行
+            import os
+            self._service_url = os.getenv('MINERU_SERVICE_URL', 'http://mineru:8001')
+            logger.info(f"MinerU service URL: {self._service_url}")
+            
+            # 检查服务是否可用
+            import requests
+            response = requests.get(f"{self._service_url}/health", timeout=5)
+            if response.status_code == 200:
+                logger.info("MinerU engine initialized successfully")
+            else:
+                logger.warning(f"MinerU service responded with status {response.status_code}")
+                self._service_url = None
+                
+        except Exception as e:
+            logger.warning(f"MinerU service not available: {e}")
+            self._service_url = None
+    
+    def is_available(self) -> bool:
+        """检查MinerU服务是否可用"""
+        if not self._service_url:
+            return False
+        
+        try:
+            import requests
+            response = requests.get(f"{self._service_url}/health", timeout=2)
+            return response.status_code == 200
+        except:
+            return False
+    
+    def extract_text(self, file_content: bytes, filename: str) -> DocumentStructure:
+        """使用MinerU提取文本"""
+        if not self._service_url:
+            raise FileProcessingError("MinerU service not available", "MINERU_UNAVAILABLE")
+        
+        try:
+            import requests
+            from io import BytesIO
+            
+            # 准备文件上传
+            files = {
+                'file': (filename, BytesIO(file_content), 'application/octet-stream')
+            }
+            
+            # 配置参数
+            backend = self.config.get('backend', 'pipeline')  # pipeline或vlm-transformers
+            device = self.config.get('device', 'cuda')
+            
+            # 调用MinerU服务
+            response = requests.post(
+                f"{self._service_url}/ocr",
+                files=files,
+                params={
+                    'backend': backend,
+                    'device': device,
+                    'batch_size': self.config.get('batch_size', 8)
+                },
+                timeout=300  # 5分钟超时
+            )
+            
+            if response.status_code != 200:
+                raise FileProcessingError(
+                    f"MinerU service error: {response.text}",
+                    "MINERU_ERROR"
+                )
+            
+            result = response.json()
+            
+            if not result.get('success'):
+                raise FileProcessingError(
+                    result.get('error', 'Unknown error'),
+                    "MINERU_PROCESSING_ERROR"
+                )
+            
+            # 解析MinerU返回的结果
+            extracted_text = result.get('text', '')
+            metadata = result.get('metadata', {})
+            
+            # 按页分割文本 (基于markdown的页分隔符)
+            pages = extracted_text.split('---\n\n')
+            page_results = []
+            text_blocks = []
+            
+            for page_num, page_text in enumerate(pages, 1):
+                if page_text.strip():
+                    ocr_result = OCRResult(
+                        text=page_text.strip(),
+                        confidence=0.95,  # MinerU高精度
+                        bbox=None,
+                        page_number=page_num
+                    )
+                    page_results.append([ocr_result])
+                    
+                    text_blocks.append({
+                        'text': page_text.strip(),
+                        'page': page_num,
+                        'bbox': None,
+                        'confidence': 0.95,
+                        'type': 'markdown'
+                    })
+            
+            return DocumentStructure(
+                total_pages=len(pages),
+                page_results=page_results,
+                full_text=extracted_text,
+                text_blocks=text_blocks
+            )
+            
+        except requests.exceptions.Timeout:
+            logger.error("MinerU service timeout")
+            raise FileProcessingError("MinerU processing timeout", "MINERU_TIMEOUT")
+        except Exception as e:
+            logger.error(f"MinerU processing failed: {e}")
+            raise FileProcessingError(f"MinerU failed: {str(e)}", "MINERU_FAILED")
+
+
 class FallbackOCREngine(BaseOCREngine):
     """回退OCR引擎 - 用于纯文本文件"""
     
@@ -330,6 +457,12 @@ class OCRService:
             self.engines['paddleocr'] = paddle_engine
             logger.info("PaddleOCR engine registered")
         
+        # 初始化MinerU引擎
+        mineru_engine = MinerUEngine()
+        if mineru_engine.is_available():
+            self.engines['mineru'] = mineru_engine
+            logger.info("MinerU engine registered")
+        
         # 初始化回退引擎
         self.engines['fallback'] = FallbackOCREngine()
         logger.info("Fallback OCR engine registered")
@@ -342,7 +475,7 @@ class OCRService:
         """获取指定的OCR引擎"""
         return self.engines.get(engine_name)
     
-    def extract_text(self, file_content: bytes, filename: str, engine_name: str = 'paddleocr') -> DocumentStructure:
+    def extract_text(self, file_content: bytes, filename: str, engine_name: str = 'paddleocr', engine_config: Dict[str, Any] = None) -> DocumentStructure:
         """
         使用指定引擎提取文本
         
@@ -350,10 +483,13 @@ class OCRService:
             file_content: 文件内容
             filename: 文件名
             engine_name: OCR引擎名称
+            engine_config: 引擎配置参数
             
         Returns:
             DocumentStructure: 提取的文档结构
         """
+        engine_config = engine_config or {}
+        
         # 根据文件类型选择合适的引擎
         if filename.lower().endswith(('.txt', '.md', '.json', '.tex', '.latex')):
             engine_name = 'fallback'
@@ -367,7 +503,13 @@ class OCRService:
         if not engine:
             raise FileProcessingError("No OCR engine available", "NO_OCR_ENGINE")
         
-        logger.info(f"Using OCR engine: {engine.name}")
+        # 如果是MinerU引擎，应用配置
+        if engine_name == 'mineru' and hasattr(engine, 'config'):
+            engine.config.update(engine_config)
+            logger.info(f"Using OCR engine: {engine.name} with config: {engine_config}")
+        else:
+            logger.info(f"Using OCR engine: {engine.name}")
+        
         return engine.extract_text(file_content, filename)
 
 

@@ -5,14 +5,22 @@
   position: relative;
   width: 100%;
   height: 100%;
+  overflow: hidden;
 }
 
 .kg-container canvas {
   cursor: grab;
+  display: block;
 }
 
 .kg-container canvas:active {
   cursor: grabbing;
+}
+
+/* 优化 Cytoscape 容器 */
+.kg-container > div {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* 自适应滚轮提示 */

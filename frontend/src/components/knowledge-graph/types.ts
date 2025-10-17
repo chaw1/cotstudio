@@ -55,8 +55,8 @@ export interface ViewportState {
 
 export interface KGVisualizationProps {
   projectId: string | null;
-  height?: number;
-  width?: number;
+  height?: number | string;
+  width?: number | string;
   initialLayout?: string;
   showControls?: boolean;
   showStats?: boolean;

@@ -6,12 +6,14 @@ database connections, and task queue status.
 
 import psutil
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 from sqlalchemy import text
 from ..core.database import get_db
 from ..core.config import settings
 import logging
+import subprocess
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +150,99 @@ class SystemMonitorService:
                 "completed": 0
             }
     
+    @staticmethod
+    def get_gpu_info() -> Dict[str, Any]:
+        """Get GPU information using nvidia-smi."""
+        try:
+            # Try to get GPU info from nvidia-smi
+            result = subprocess.run(
+                ['nvidia-smi', '--query-gpu=index,name,driver_version,memory.total,memory.used,memory.free,utilization.gpu,temperature.gpu', 
+                 '--format=csv,noheader,nounits'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            
+            if result.returncode != 0:
+                return {"available": False, "error": "NVIDIA GPU not found"}
+            
+            gpus = []
+            for line in result.stdout.strip().split('\n'):
+                if line:
+                    parts = [p.strip() for p in line.split(',')]
+                    if len(parts) >= 8:
+                        gpus.append({
+                            "index": int(parts[0]),
+                            "name": parts[1],
+                            "driver_version": parts[2],
+                            "memory_total_mb": float(parts[3]),
+                            "memory_used_mb": float(parts[4]),
+                            "memory_free_mb": float(parts[5]),
+                            "utilization_percent": float(parts[6]),
+                            "temperature_c": float(parts[7])
+                        })
+            
+            # Get CUDA version from nvidia-smi
+            cuda_version = "N/A"
+            try:
+                cuda_result = subprocess.run(
+                    ['nvidia-smi', '--query-gpu=compute_cap', '--format=csv,noheader'],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                # Get driver-supported CUDA version
+                version_result = subprocess.run(
+                    ['nvidia-smi'],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                if version_result.returncode == 0:
+                    # Parse CUDA version from nvidia-smi output header
+                    for line in version_result.stdout.split('\n'):
+                        if 'CUDA Version' in line:
+                            # Extract CUDA Version: 13.0
+                            parts = line.split('CUDA Version:')
+                            if len(parts) > 1:
+                                cuda_version = parts[1].strip().split()[0]
+                                break
+            except Exception as e:
+                logger.debug(f"Could not get CUDA version: {e}")
+            
+            # Try to get cuDNN version
+            cudnn_version = "N/A"
+            try:
+                # Try to import torch and get cuDNN version
+                import torch
+                if torch.cuda.is_available():
+                    cudnn_version = f"{torch.backends.cudnn.version()}"
+            except Exception as e:
+                logger.debug(f"Could not get cuDNN version: {e}")
+            
+            # Calculate total memory
+            total_memory_gb = sum(gpu["memory_total_mb"] for gpu in gpus) / 1024
+            used_memory_gb = sum(gpu["memory_used_mb"] for gpu in gpus) / 1024
+            
+            return {
+                "available": True,
+                "count": len(gpus),
+                "gpus": gpus,
+                "cuda_version": cuda_version,
+                "cudnn_version": cudnn_version,
+                "total_memory_gb": round(total_memory_gb, 2),
+                "used_memory_gb": round(used_memory_gb, 2),
+                "memory_percent": round((used_memory_gb / total_memory_gb * 100) if total_memory_gb > 0 else 0, 2)
+            }
+            
+        except FileNotFoundError:
+            return {"available": False, "error": "nvidia-smi not found"}
+        except subprocess.TimeoutExpired:
+            return {"available": False, "error": "nvidia-smi timeout"}
+        except Exception as e:
+            logger.error(f"Error getting GPU info: {e}")
+            return {"available": False, "error": str(e)}
+    
     @classmethod
     async def get_system_resources(cls) -> Dict[str, Any]:
         """Get comprehensive system resource information."""
@@ -160,6 +255,7 @@ class SystemMonitorService:
             network_info = cls.get_network_usage()
             db_connections = await cls.get_database_connections()
             queue_status = await cls.get_queue_status()
+            gpu_info = cls.get_gpu_info()
             
             return {
                 "timestamp": datetime.utcnow().isoformat(),
@@ -176,6 +272,7 @@ class SystemMonitorService:
                     "connections": db_connections
                 },
                 "queue": queue_status,
+                "gpu": gpu_info,
                 "system": {
                     "boot_time": psutil.boot_time(),
                     "uptime": datetime.utcnow().timestamp() - psutil.boot_time()
@@ -193,6 +290,7 @@ class SystemMonitorService:
                 "network": {"bytes_sent": 0, "bytes_recv": 0, "packets_sent": 0, "packets_recv": 0},
                 "database": {"connections": 0},
                 "queue": {"pending": 0, "active": 0, "failed": 0, "completed": 0},
+                "gpu": {"available": False},
                 "system": {"boot_time": 0, "uptime": 0}
             }
     

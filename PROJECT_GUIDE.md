@@ -226,6 +226,8 @@ SECRET_KEY=your-secret-key-change-in-production-please-use-a-strong-key
 
 ## 🛠️ 开发指南
 
+> **📌 开发偏好设置**: 查看 [PROJECT_PREFERENCES.md](PROJECT_PREFERENCES.md) 了解项目的代码风格和配置偏好
+
 ### 本地开发环境
 
 #### 方法一：Docker 开发 (推荐)

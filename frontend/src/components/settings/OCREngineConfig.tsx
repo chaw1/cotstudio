@@ -12,14 +12,23 @@ import {
   Alert,
   Collapse,
   Row,
-  Col
+  Col,
+  Typography,
+  Radio,
+  Select
 } from 'antd';
-import { CheckCircleOutlined, ExclamationCircleOutlined, SettingOutlined } from '@ant-design/icons';
+import { 
+  CheckCircleOutlined, 
+  ExclamationCircleOutlined, 
+  SettingOutlined,
+  ThunderboltOutlined
+} from '@ant-design/icons';
 import { OCREngineConfig as OCREngineConfigType } from '../../types';
 import { useSettingsStore } from '../../stores/settingsStore';
 
 const { Panel } = Collapse;
 const { TextArea } = Input;
+const { Text } = Typography;
 
 interface OCREngineConfigProps {
   onConfigChange?: (engines: OCREngineConfigType[]) => void;
@@ -111,13 +120,15 @@ const OCREngineConfig: React.FC<OCREngineConfigProps> = ({ onConfigChange }) => 
         use_gpu: false,
         det_model_dir: '',
         rec_model_dir: '',
-        cls_model_dir: ''
+        cls_model_dir: '',
+        confidence_threshold: 0.8
       },
       mineru: {
-        layout_detection: true,
-        formula_detection: true,
-        table_detection: true,
-        image_dpi: 200,
+        use_gpu: true,
+        recognition_mode: 'fast',  // 'fast' | 'accurate'
+        backend: 'pipeline',  // pipeline或vlm-transformers
+        device: 'cuda',  // cuda或cpu
+        batch_size: 8,
         output_format: 'markdown'
       },
       alibaba_advanced: {
@@ -125,7 +136,8 @@ const OCREngineConfig: React.FC<OCREngineConfigProps> = ({ onConfigChange }) => 
         enable_table: true,
         enable_formula: true,
         enable_stamp: false,
-        enable_qrcode: false
+        enable_qrcode: false,
+        confidence_threshold: 0.85
       }
     };
     return defaults[engine as keyof typeof defaults] || {};
@@ -134,6 +146,82 @@ const OCREngineConfig: React.FC<OCREngineConfigProps> = ({ onConfigChange }) => 
   const renderParameterForm = (engine: string, parameters: Record<string, any>) => {
     const defaultParams = getDefaultParameters(engine);
     
+    // MinerU引擎专用配置界面
+    if (engine === 'mineru') {
+      return (
+        <div>
+          <h4>MinerU引擎参数配置</h4>
+          
+          <Form.Item
+            name={['parameters', 'use_gpu']}
+            label="启用GPU"
+            valuePropName="checked"
+            initialValue={parameters.use_gpu ?? true}
+            tooltip="启用GPU可以大幅提升处理速度，需要NVIDIA显卡支持"
+          >
+            <Switch />
+          </Form.Item>
+          
+          <Form.Item
+            name={['parameters', 'recognition_mode']}
+            label="识别模式"
+            initialValue={parameters.recognition_mode ?? 'fast'}
+            tooltip="快速模式速度快，高精度模式准确率更高但速度较慢"
+          >
+            <Radio.Group>
+              <Radio.Button value="fast">
+                <Space>
+                  <ThunderboltOutlined />
+                  快速模式 (Pipeline)
+                </Space>
+              </Radio.Button>
+              <Radio.Button value="accurate">
+                <Space>
+                  <CheckCircleOutlined />
+                  高精度模式 (VLM)
+                </Space>
+              </Radio.Button>
+            </Radio.Group>
+          </Form.Item>
+          
+          <Alert
+            message="模式说明"
+            description={
+              <div>
+                <p><strong>快速模式 (Pipeline)</strong>: 使用传统Pipeline架构，速度快，适合大批量处理</p>
+                <p><strong>高精度模式 (VLM)</strong>: 使用视觉语言模型，识别精度更高，适合复杂文档</p>
+              </div>
+            }
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+          
+          <Form.Item
+            name={['parameters', 'batch_size']}
+            label="批处理大小"
+            initialValue={parameters.batch_size ?? 8}
+            tooltip="GPU模式下可以设置更大的批处理大小以提升速度"
+          >
+            <InputNumber min={1} max={32} />
+          </Form.Item>
+          
+          <Form.Item
+            name={['parameters', 'output_format']}
+            label="输出格式"
+            initialValue={parameters.output_format ?? 'markdown'}
+          >
+            <Select>
+              <Select.Option value="markdown">Markdown</Select.Option>
+              <Select.Option value="text">纯文本</Select.Option>
+              <Select.Option value="json">JSON</Select.Option>
+            </Select>
+          </Form.Item>
+        </div>
+      );
+    }
+    
+    // 其他引擎的默认配置界面
     return (
       <div>
         <h4>引擎参数配置</h4>
@@ -230,6 +318,15 @@ const OCREngineConfig: React.FC<OCREngineConfigProps> = ({ onConfigChange }) => 
             onFinish={(values) => {
               // 合并自定义参数
               let finalParameters = { ...values.parameters };
+              
+              // 添加API配置到参数中
+              if (values.useApi !== undefined) {
+                finalParameters.useApi = values.useApi;
+              }
+              if (values.apiUrl) {
+                finalParameters.apiUrl = values.apiUrl;
+              }
+              
               if (values.custom_parameters) {
                 try {
                   const customParams = JSON.parse(values.custom_parameters);
@@ -247,6 +344,8 @@ const OCREngineConfig: React.FC<OCREngineConfigProps> = ({ onConfigChange }) => 
             }}
             initialValues={{
               ...engine,
+              useApi: engine.parameters?.useApi || false,
+              apiUrl: engine.parameters?.apiUrl || '',
               custom_parameters: JSON.stringify(engine.parameters, null, 2)
             }}
           >
@@ -267,9 +366,48 @@ const OCREngineConfig: React.FC<OCREngineConfigProps> = ({ onConfigChange }) => 
               </Col>
             </Row>
 
+            {/* API版本配置 */}
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item 
+                  name="useApi" 
+                  label="使用API版本" 
+                  valuePropName="checked"
+                  tooltip="启用后将使用远程API服务，而不是本地引擎"
+                >
+                  <Switch />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  noStyle
+                  shouldUpdate={(prevValues, currentValues) => 
+                    prevValues.useApi !== currentValues.useApi
+                  }
+                >
+                  {({ getFieldValue }) => 
+                    getFieldValue('useApi') ? (
+                      <Form.Item
+                        name="apiUrl"
+                        label="API地址"
+                        rules={[
+                          { required: true, message: '请输入API地址' },
+                          { type: 'url', message: '请输入有效的URL' }
+                        ]}
+                      >
+                        <Input placeholder="https://api.example.com/ocr" />
+                      </Form.Item>
+                    ) : null
+                  }
+                </Form.Item>
+              </Col>
+            </Row>
+
             <Collapse>
               <Panel header="参数配置" key="parameters">
-                {renderParameterForm(engine.engine, engine.parameters)}
+                <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '8px' }}>
+                  {renderParameterForm(engine.engine, engine.parameters)}
+                </div>
               </Panel>
             </Collapse>
 
@@ -282,6 +420,15 @@ const OCREngineConfig: React.FC<OCREngineConfigProps> = ({ onConfigChange }) => 
                   onClick={() => {
                     const currentValues = form.getFieldsValue();
                     let finalParameters = { ...currentValues.parameters };
+                    
+                    // 添加API配置到参数中
+                    if (currentValues.useApi !== undefined) {
+                      finalParameters.useApi = currentValues.useApi;
+                    }
+                    if (currentValues.apiUrl) {
+                      finalParameters.apiUrl = currentValues.apiUrl;
+                    }
+                    
                     if (currentValues.custom_parameters) {
                       try {
                         const customParams = JSON.parse(currentValues.custom_parameters);
@@ -308,11 +455,17 @@ const OCREngineConfig: React.FC<OCREngineConfigProps> = ({ onConfigChange }) => 
         ) : (
           <div>
             <Row gutter={16}>
-              <Col span={12}>
+              <Col span={8}>
                 <p><strong>优先级:</strong> {engine.priority}</p>
                 <p><strong>状态:</strong> {engine.enabled ? '已启用' : '已禁用'}</p>
               </Col>
-              <Col span={12}>
+              <Col span={8}>
+                <p><strong>使用API:</strong> {engine.parameters?.useApi ? '是' : '否'}</p>
+                {engine.parameters?.useApi && engine.parameters?.apiUrl && (
+                  <p><strong>API地址:</strong> <Text code ellipsis style={{ maxWidth: 200 }}>{engine.parameters.apiUrl}</Text></p>
+                )}
+              </Col>
+              <Col span={8}>
                 <p><strong>参数数量:</strong> {Object.keys(engine.parameters).length}</p>
               </Col>
             </Row>
@@ -320,9 +473,11 @@ const OCREngineConfig: React.FC<OCREngineConfigProps> = ({ onConfigChange }) => 
             {Object.keys(engine.parameters).length > 0 && (
               <Collapse size="small">
                 <Panel header="查看参数" key="view-params">
-                  <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4 }}>
-                    {JSON.stringify(engine.parameters, null, 2)}
-                  </pre>
+                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    <pre style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, margin: 0 }}>
+                      {JSON.stringify(engine.parameters, null, 2)}
+                    </pre>
+                  </div>
                 </Panel>
               </Collapse>
             )}

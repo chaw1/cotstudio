@@ -235,21 +235,38 @@ const KnowledgeGraph: React.FC = () => {
       </div>
       
       {/* 知识图谱可视化区域 */}
-      <div style={{ height: graphHeight }}>
-        <KnowledgeGraphViewer
-          projectId={projectId}
-          height={isMobile ? undefined : 600}
-          showControls={!isMobile}
-          showStats={!isMobile}
-
-          onNodeSelect={(node) => {
-            console.log('Selected node:', node);
-          }}
-          onEdgeSelect={(edge) => {
-            console.log('Selected edge:', edge);
-          }}
-        />
-      </div>
+      <Card 
+        style={{ 
+          height: graphHeight,
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+        styles={{
+          body: {
+            flex: 1,
+            padding: isMobile ? '12px' : '16px',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }
+        }}
+      >
+        <div style={{ flex: 1, height: '100%', minHeight: 0 }}>
+          <KnowledgeGraphViewer
+            projectId={projectId}
+            height={undefined}
+            showControls={!isMobile}
+            showStats={!isMobile}
+            initialLayout="cose"
+            onNodeSelect={(node) => {
+              console.log('Selected node:', node);
+            }}
+            onEdgeSelect={(edge) => {
+              console.log('Selected edge:', edge);
+            }}
+          />
+        </div>
+      </Card>
 
       {/* 移动端控制面板抽屉 */}
       {isMobile && (

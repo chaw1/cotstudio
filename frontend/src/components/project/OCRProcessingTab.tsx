@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   List,
@@ -8,6 +8,7 @@ import {
   Tag,
   Progress,
   Empty,
+  message,
 } from 'antd';
 import {
   PlayCircleOutlined,
@@ -16,10 +17,12 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   ClockCircleOutlined,
+  StopOutlined,
 } from '@ant-design/icons';
 import { FileInfo } from '../../types';
 import { OCRProcessing } from '../ocr';
 import ModalContainer from '../common/ModalContainer';
+import { fileService } from '../../services/fileService';
 
 const { Text, Title } = Typography;
 
@@ -35,6 +38,8 @@ const OCRProcessingTab: React.FC<OCRProcessingTabProps> = ({
 }) => {
   const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
   const [showOCRModal, setShowOCRModal] = useState(false);
+  const [processingFiles, setProcessingFiles] = useState<Set<string>>(new Set());
+  const [stoppingFiles, setStoppingFiles] = useState<Set<string>>(new Set());
 
   // 安全的文件数组
   const safeFiles = Array.isArray(files) 
@@ -140,6 +145,93 @@ const OCRProcessingTab: React.FC<OCRProcessingTabProps> = ({
     onRefresh();
   };
 
+  // 轮询处理中的文件状态
+  const pollOCRStatus = useCallback(async () => {
+    const processingFilesList = safeFiles.filter(f => getFileOCRStatus(f) === 'processing');
+    
+    if (processingFilesList.length === 0) {
+      console.log('⏸️ pollOCRStatus: 没有处理中的文件');
+      return;
+    }
+
+    console.log('📊 轮询状态,处理中文件:', processingFilesList.map(f => f.filename));
+
+    // 更新当前正在处理的文件集合
+    setProcessingFiles(new Set(processingFilesList.map(f => f.id)));
+
+    // 串行查询避免资源耗尽 - 一次只查询一个文件
+    let hasStatusChange = false;
+    
+    for (const file of processingFilesList) {
+      try {
+        const response = await fileService.getFileOCRStatus(file.id);
+        const newStatus = response.data.ocr_status;
+        console.log(`📄 ${file.filename}: ${newStatus}`);
+        
+        if (newStatus !== 'processing') {
+          hasStatusChange = true;
+        }
+      } catch (error) {
+        console.error(`❌ Failed to get OCR status for file ${file.id}:`, error);
+        // 如果是网络错误,停止后续查询
+        if ((error as any).error === 'NETWORK_ERROR') {
+          console.error('🛑 网络错误,停止轮询');
+          break;
+        }
+      }
+    }
+
+    if (hasStatusChange) {
+      console.log('✅ 检测到状态变化,刷新列表');
+      onRefresh();
+    }
+  }, [safeFiles, onRefresh]);
+
+  // 定期轮询OCR状态
+  useEffect(() => {
+    const hasProcessing = safeFiles.some(f => getFileOCRStatus(f) === 'processing');
+    
+    if (!hasProcessing) {
+      console.log('⏸️ 没有处理中的文件,停止轮询');
+      return;
+    }
+
+    console.log('🔄 开始轮询OCR状态,处理中文件数:', safeFiles.filter(f => getFileOCRStatus(f) === 'processing').length);
+
+    // 设置定时器，每5秒轮询一次(增加间隔避免资源耗尽)
+    const interval = setInterval(() => {
+      console.log('⏰ 定时轮询OCR状态...');
+      pollOCRStatus();
+    }, 5000);
+
+    return () => {
+      console.log('🛑 清理定时器');
+      clearInterval(interval);
+    };
+  }, [processingFiles.size]); // 只依赖处理中文件的数量,避免过度重新渲染
+
+  // 停止OCR处理
+  const handleStopOCR = async (file: FileInfo) => {
+    try {
+      setStoppingFiles(prev => new Set(prev).add(file.id));
+      
+      const response = await fileService.stopFileOCR(file.id);
+      
+      message.success(`已停止 "${file.filename}" 的OCR处理`);
+      
+      // 刷新列表
+      onRefresh();
+    } catch (error: any) {
+      message.error(error.message || 'OCR停止失败');
+    } finally {
+      setStoppingFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(file.id);
+        return newSet;
+      });
+    }
+  };
+
   // 计算统计数据
   const completedCount = safeFiles.filter(f => getFileOCRStatus(f) === 'completed').length;
   const processingCount = safeFiles.filter(f => getFileOCRStatus(f) === 'processing').length;
@@ -201,14 +293,32 @@ const OCRProcessingTab: React.FC<OCRProcessingTabProps> = ({
                     >
                       查看切片
                     </Button>
+                  ) : getFileOCRStatus(file) === 'processing' ? (
+                    <Space>
+                      <Button
+                        type="link"
+                        icon={<EyeOutlined />}
+                        onClick={() => handleViewSlices(file)}
+                      >
+                        查看进度
+                      </Button>
+                      <Button
+                        type="link"
+                        danger
+                        icon={<StopOutlined />}
+                        onClick={() => handleStopOCR(file)}
+                        loading={stoppingFiles.has(file.id)}
+                      >
+                        停止
+                      </Button>
+                    </Space>
                   ) : (
                     <Button
                       type="link"
                       icon={<PlayCircleOutlined />}
                       onClick={() => handleStartOCR(file)}
-                      disabled={getFileOCRStatus(file) === 'processing'}
                     >
-                      {getFileOCRStatus(file) === 'processing' ? '处理中...' : '开始OCR'}
+                      开始OCR
                     </Button>
                   ),
                 ]}
@@ -256,7 +366,7 @@ const OCRProcessingTab: React.FC<OCRProcessingTabProps> = ({
                       </Text>
                       {getFileOCRStatus(file) === 'processing' && (
                         <Progress
-                          percent={50}
+                          percent={undefined}
                           size="small"
                           status="active"
                         />
@@ -277,7 +387,6 @@ const OCRProcessingTab: React.FC<OCRProcessingTabProps> = ({
         title={`OCR处理 - ${selectedFile?.filename || ''}`}
         width={900}
         centered={true}
-        destroyOnClose={true}
         footer={null}
         zIndex={1050}
         maskClosable={false}

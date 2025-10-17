@@ -51,6 +51,10 @@ const KGStatsPanel: React.FC<KGStatsPanelProps> = ({ projectId }) => {
     );
   }
 
+  // 安全地获取数组，确保不是undefined
+  const entityTypes = stats.entityTypes || [];
+  const relationTypes = stats.relationTypes || [];
+
   // 计算图谱密度
   const density = stats.totalEntities > 0 
     ? (stats.totalRelations / (stats.totalEntities * (stats.totalEntities - 1))) * 100 
@@ -101,7 +105,7 @@ const KGStatsPanel: React.FC<KGStatsPanelProps> = ({ projectId }) => {
             percent={Math.min(density, 100)}
             size="small"
             strokeColor={getProgressColor(density)}
-            format={(percent) => `${percent?.toFixed(1)}%`}
+            format={(percent) => `${percent?.toFixed(2)}%`}
           />
           <Text type="secondary" style={{ fontSize: '11px' }}>
             {density < 10 ? '稀疏' : density < 30 ? '适中' : density < 60 ? '密集' : '非常密集'}
@@ -109,76 +113,80 @@ const KGStatsPanel: React.FC<KGStatsPanelProps> = ({ projectId }) => {
         </div>
 
         {/* 实体类型分布 */}
-        <div>
-          <Title level={5} style={{ margin: '12px 0 8px 0' }}>
-            <PieChartOutlined style={{ marginRight: 4 }} />
-            实体类型分布
-          </Title>
-          <List
-            size="small"
-            dataSource={stats.entityTypes.slice(0, 5)}
-            renderItem={(item) => {
-              const percentage = (item.count / stats.totalEntities) * 100;
-              return (
-                <List.Item style={{ padding: '4px 0' }}>
-                  <div style={{ width: '100%' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                      <Text style={{ fontSize: '12px' }}>{item.type}</Text>
-                      <Text style={{ fontSize: '12px' }}>{item.count}</Text>
+        {entityTypes.length > 0 && (
+          <div>
+            <Title level={5} style={{ margin: '12px 0 8px 0' }}>
+              <PieChartOutlined style={{ marginRight: 4 }} />
+              实体类型分布
+            </Title>
+            <List
+              size="small"
+              dataSource={entityTypes.slice(0, 5)}
+              renderItem={(item) => {
+                const percentage = (item.count / stats.totalEntities) * 100;
+                return (
+                  <List.Item style={{ padding: '4px 0' }}>
+                    <div style={{ width: '100%' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                        <Text style={{ fontSize: '12px' }}>{item.type}</Text>
+                        <Text style={{ fontSize: '12px' }}>{item.count}</Text>
+                      </div>
+                      <Progress
+                        percent={percentage}
+                        size="small"
+                        showInfo={false}
+                        strokeColor="#1890ff"
+                      />
                     </div>
-                    <Progress
-                      percent={percentage}
-                      size="small"
-                      showInfo={false}
-                      strokeColor="#1890ff"
-                    />
-                  </div>
-                </List.Item>
-              );
-            }}
-          />
-          {stats.entityTypes.length > 5 && (
-            <Text type="secondary" style={{ fontSize: '11px' }}>
-              还有 {stats.entityTypes.length - 5} 种类型...
-            </Text>
-          )}
-        </div>
+                  </List.Item>
+                );
+              }}
+            />
+            {entityTypes.length > 5 && (
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                还有 {entityTypes.length - 5} 种类型...
+              </Text>
+            )}
+          </div>
+        )}
 
         {/* 关系类型分布 */}
-        <div>
-          <Title level={5} style={{ margin: '12px 0 8px 0' }}>
-            <LinkOutlined style={{ marginRight: 4 }} />
-            关系类型分布
-          </Title>
-          <List
-            size="small"
-            dataSource={stats.relationTypes.slice(0, 5)}
-            renderItem={(item) => {
-              const percentage = (item.count / stats.totalRelations) * 100;
-              return (
-                <List.Item style={{ padding: '4px 0' }}>
-                  <div style={{ width: '100%' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                      <Text style={{ fontSize: '12px' }}>{item.type}</Text>
-                      <Text style={{ fontSize: '12px' }}>{item.count}</Text>
+        {relationTypes.length > 0 && (
+          <div>
+            <Title level={5} style={{ margin: '12px 0 8px 0' }}>
+              <LinkOutlined style={{ marginRight: 4 }} />
+              关系类型分布
+            </Title>
+            <List
+              size="small"
+              dataSource={relationTypes.slice(0, 5)}
+              renderItem={(item) => {
+                const percentage = (item.count / stats.totalRelations) * 100;
+                return (
+                  <List.Item style={{ padding: '4px 0' }}>
+                    <div style={{ width: '100%' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                        <Text style={{ fontSize: '12px' }}>{item.type}</Text>
+                        <Text style={{ fontSize: '12px' }}>{item.count}</Text>
+                      </div>
+                      <Progress
+                        percent={percentage}
+                        size="small"
+                        showInfo={false}
+                        strokeColor="#52c41a"
+                      />
                     </div>
-                    <Progress
-                      percent={percentage}
-                      size="small"
-                      showInfo={false}
-                      strokeColor="#52c41a"
-                    />
-                  </div>
-                </List.Item>
-              );
-            }}
-          />
-          {stats.relationTypes.length > 5 && (
-            <Text type="secondary" style={{ fontSize: '11px' }}>
-              还有 {stats.relationTypes.length - 5} 种关系...
-            </Text>
-          )}
-        </div>
+                  </List.Item>
+                );
+              }}
+            />
+            {relationTypes.length > 5 && (
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                还有 {relationTypes.length - 5} 种关系...
+              </Text>
+            )}
+          </div>
+        )}
 
         {/* 图谱质量指标 */}
         <div>
@@ -188,7 +196,7 @@ const KGStatsPanel: React.FC<KGStatsPanelProps> = ({ projectId }) => {
               <Text type="secondary" style={{ fontSize: '12px' }}>平均连接度:</Text>
               <Text style={{ fontSize: '12px' }}>
                 {stats.totalEntities > 0 
-                  ? (stats.totalRelations * 2 / stats.totalEntities).toFixed(1)
+                  ? (stats.totalRelations * 2 / stats.totalEntities).toFixed(2)
                   : '0'
                 }
               </Text>

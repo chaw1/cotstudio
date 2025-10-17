@@ -56,7 +56,6 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
   const isMountedRef = useRef(true);
   const initializationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const layoutTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const previousDataRef = useRef<string>(''); // 追踪上次的数据，避免无限循环
   
   const [loading, setLoading] = useState(false); // 默认不加载，由useEffect控制
   const [entities, setEntities] = useState<KGEntity[]>([]);
@@ -84,8 +83,9 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
         label: entity.label,
         type: entity.type,
         properties: entity.properties,
-        size: Math.max(20, Math.min(60, (entity.properties.connections || 1) * 5)),
-        color: getEntityColor(entity.type)
+        // 优先使用外部传入的size和color，如果没有则使用默认计算
+        size: entity.properties.originalSize || entity.properties.size || Math.max(20, Math.min(60, (entity.properties.connections || 1) * 5)),
+        color: entity.properties.originalColor || entity.properties.color || getEntityColor(entity.type)
       },
       classes: `entity-${entity.type.toLowerCase().replace(/\s+/g, '-')}`
     }));
@@ -98,7 +98,9 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
         label: relation.type,
         type: relation.type,
         properties: relation.properties,
-        weight: relation.properties.weight || 1
+        weight: relation.properties.weight || 1,
+        // 使用外部传入的颜色
+        color: relation.properties.originalColor || relation.properties.color || '#d9d9d9'
       },
       classes: `relation-${relation.type.toLowerCase().replace(/\s+/g, '-')}`
     }));
@@ -153,8 +155,8 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
     {
       selector: 'edge',
       style: {
-        'line-color': '#7f8c8d',
-        'target-arrow-color': '#7f8c8d',
+        'line-color': 'data(color)',
+        'target-arrow-color': 'data(color)',
         'target-arrow-shape': 'triangle',
         'curve-style': 'bezier',
         'label': 'data(label)',
@@ -218,7 +220,7 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
   const initializeCytoscape = useCallback((elements: CytoscapeElement) => {
     // 检查组件是否仍然挂载
     if (!isMountedRef.current || !cyRef.current) {
-      console.warn('Component unmounted or container not ready');
+      console.warn('[KnowledgeGraphViewer] 组件已卸载或容器未准备好');
       setLoading(false);
       return;
     }
@@ -229,12 +231,17 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
 
       // 检查元素数量，避免创建空图
       if (elements.nodes.length === 0) {
-        console.log('No nodes to display, stopping loading');
+        console.log('[KnowledgeGraphViewer] 没有节点数据，停止加载');
         setLoading(false);
         return;
       }
 
-      console.log('Initializing Cytoscape with', elements.nodes.length, 'nodes and', elements.edges.length, 'edges');
+      console.log('[KnowledgeGraphViewer] 开始初始化Cytoscape:', {
+        nodes: elements.nodes.length,
+        edges: elements.edges.length,
+        containerWidth: cyRef.current.offsetWidth,
+        containerHeight: cyRef.current.offsetHeight
+      });
 
       cyInstance.current = cytoscape({
         container: cyRef.current,
@@ -253,7 +260,27 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
         userPanningEnabled: true
       });
 
-      console.log('Cytoscape instance created successfully');
+      console.log('[KnowledgeGraphViewer] Cytoscape实例创建成功:', {
+        instance: !!cyInstance.current,
+        nodesCount: cyInstance.current?.nodes().length,
+        edgesCount: cyInstance.current?.edges().length
+      });
+      
+      // 输出所有节点和边的信息用于调试
+      if (cyInstance.current) {
+        console.log('[KnowledgeGraphViewer] 所有节点:', cyInstance.current.nodes().map(n => ({
+          id: n.data('id'),
+          label: n.data('label'),
+          size: n.data('size'),
+          color: n.data('color')
+        })));
+        console.log('[KnowledgeGraphViewer] 所有边:', cyInstance.current.edges().map(e => ({
+          id: e.data('id'),
+          source: e.data('source'),
+          target: e.data('target'),
+          color: e.data('color')
+        })));
+      }
 
       // 绑定事件
       if (cyInstance.current) {
@@ -304,10 +331,8 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
 
   // 加载知识图谱数据
   const loadKnowledgeGraph = useCallback(async () => {
-    if (!isMountedRef.current) {
-      return;
-    }
-
+    if (!isMountedRef.current) return;
+    
     try {
       // 清理之前的超时
       if (initializationTimeoutRef.current) {
@@ -315,39 +340,92 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
         initializationTimeoutRef.current = null;
       }
       
+      // 使用ref获取最新值，避免依赖变化导致无限循环
+      const currentData = dataRef.current;
+      const currentDisableDataFetch = disableDataFetchRef.current;
+      const currentProjectId = projectIdRef.current;
+      
       // 如果禁用数据获取或提供了外部数据，使用外部数据
-      if (disableDataFetch || data) {
-        if (data && data.nodes && data.edges && isMountedRef.current) {
+      if (currentDisableDataFetch || currentData) {
+        console.log('[KnowledgeGraphViewer] 使用外部数据模式, disableDataFetch:', currentDisableDataFetch, 'hasData:', !!currentData);
+        if (currentData && currentData.nodes && currentData.edges && isMountedRef.current) {
+          console.log('[KnowledgeGraphViewer] 接收到外部数据:', {
+            nodes: currentData.nodes.length,
+            edges: currentData.edges.length,
+            firstNode: currentData.nodes[0],
+            firstEdge: currentData.edges[0]
+          });
           
           // 转换外部数据格式为内部格式
-          const mockEntities: KGEntity[] = data.nodes.map(node => ({
-            id: node.id,
-            label: node.label,
-            type: node.type || 'default',
-            properties: { ...node, size: node.size || 30 }
+          const mockEntities: KGEntity[] = currentData.nodes.map(node => ({
+            id: String(node.id),
+            label: String(node.label || node.id),
+            type: String(node.type || 'default'),
+            properties: { 
+              ...node.data,
+              size: node.size || 30,
+              color: node.color || '#1677ff',
+              // 保留原始size和color供后续使用
+              originalSize: node.size || 30,
+              originalColor: node.color || '#1677ff'
+            }
           }));
           
-          const mockRelations: KGRelation[] = data.edges.map(edge => ({
-            id: edge.id,
-            source: edge.source,
-            target: edge.target,
-            type: edge.type || 'related',
-            properties: { ...edge }
+          const mockRelations: KGRelation[] = currentData.edges.map(edge => ({
+            id: String(edge.id),
+            source: String(edge.source),
+            target: String(edge.target),
+            type: String(edge.type || 'related'),
+            properties: { 
+              color: edge.color || '#d9d9d9',
+              originalColor: edge.color || '#d9d9d9'
+            }
           }));
+          
+          console.log('[KnowledgeGraphViewer] 转换后的内部数据:', {
+            entities: mockEntities.length,
+            relations: mockRelations.length
+          });
           
           // 立即设置数据
           setEntities(mockEntities);
           setRelations(mockRelations);
           
           const elements = convertToElements(mockEntities, mockRelations);
-          console.log('Converted elements:', elements);
+          console.log('[KnowledgeGraphViewer] Cytoscape元素:', {
+            nodes: elements.nodes.length,
+            edges: elements.edges.length,
+            firstNode: elements.nodes[0],
+            firstEdge: elements.edges[0]
+          });
+          
+          // 验证元素格式
+          if (elements.nodes.length > 0) {
+            console.log('[KnowledgeGraphViewer] 第一个节点详细信息:', {
+              id: elements.nodes[0].data.id,
+              label: elements.nodes[0].data.label,
+              size: elements.nodes[0].data.size,
+              color: elements.nodes[0].data.color,
+              type: elements.nodes[0].data.type
+            });
+          }
           
           // 延迟初始化确保DOM准备就绪
           setTimeout(() => {
             if (isMountedRef.current && cyRef.current) {
+              console.log('[KnowledgeGraphViewer] 准备初始化Cytoscape实例...');
               initializeCytoscape(elements);
+            } else {
+              console.warn('[KnowledgeGraphViewer] 组件已卸载或容器未准备好');
             }
-          }, 100);
+          }, 150);
+        } else {
+          console.warn('[KnowledgeGraphViewer] 无效的外部数据:', {
+            hasData: !!data,
+            hasNodes: data?.nodes,
+            hasEdges: data?.edges,
+            isMounted: isMountedRef.current
+          });
         }
         
         if (isMountedRef.current) {
@@ -357,7 +435,7 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
       }
       
       // 如果没有有效的项目ID，不加载数据
-      if (!projectId) {
+      if (!currentProjectId) {
         console.log('No project ID, showing empty state');
         safeSetState(() => {
           setEntities([]);
@@ -370,7 +448,7 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
       // 只有在需要从API获取数据时才设置loading
       safeSetState(() => setLoading(true));
       
-      const graphData = await knowledgeGraphService.getKnowledgeGraph(projectId, {
+      const graphData = await knowledgeGraphService.getKnowledgeGraph(currentProjectId, {
         entityTypes: filterOptions.entityTypes.length > 0 ? filterOptions.entityTypes : undefined,
         relationTypes: filterOptions.relationTypes.length > 0 ? filterOptions.relationTypes : undefined,
         limit: filterOptions.maxNodes,
@@ -401,7 +479,7 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
         safeSetState(() => setLoading(false));
       }
     }
-  }, [projectId, filterOptions, convertToElements, initializeCytoscape, disableDataFetch, data, safeSetState]);
+  }, [convertToElements, initializeCytoscape, safeSetState]); // 移除会导致无限循环的依赖
 
   // 应用布局
   const applyLayout = useCallback((layoutName: string) => {
@@ -587,43 +665,26 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
     loadCytoscapeExtensions();
   }, []);
 
-  // 初始化 - 只在挂载时执行一次
+  // 初始化 - 使用dataRef来避免无限循环
+  const dataRef = useRef(data);
+  const disableDataFetchRef = useRef(disableDataFetch);
+  const projectIdRef = useRef(projectId);
+  
   useEffect(() => {
-    // 重置挂载状态（修复React严格模式双重挂载问题）
-    isMountedRef.current = true;
+    dataRef.current = data;
+    disableDataFetchRef.current = disableDataFetch;
+    projectIdRef.current = projectId;
+  });
 
+  // 初始化 - 只在首次挂载和关键依赖变化时执行
+  useEffect(() => {
     // 延迟初始化，确保DOM元素完全准备好
     const timer = setTimeout(() => {
       loadKnowledgeGraph();
     }, 100);
-
+    
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 只在挂载时执行一次
-
-  // 监听数据变化
-  useEffect(() => {
-    if (!isMountedRef.current) return;
-
-    // 序列化当前数据以进行比较
-    const currentDataStr = JSON.stringify({
-      data,
-      projectId,
-      disableDataFetch
-    });
-
-    // 只有数据真正改变时才重新加载
-    if (currentDataStr !== previousDataRef.current) {
-      previousDataRef.current = currentDataStr;
-
-      const timer = setTimeout(() => {
-        loadKnowledgeGraph();
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, projectId, disableDataFetch]); // 监听关键属性变化
+  }, []); // 空依赖数组，只在首次挂载时执行
 
   // 清理
   useEffect(() => {
@@ -658,14 +719,13 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
   });
 
   return (
-    <div style={{ height: '100%', width: '100%', display: 'flex' }}>
+    <div style={{ height: '100%', width: '100%', display: 'flex', gap: '12px' }}>
       {/* 控制面板 */}
       {showControls && (
         <div style={{ 
-          width: '280px', 
+          width: '320px', 
           height: '100%', 
           overflowY: 'auto',
-          marginRight: '16px',
           flexShrink: 0
         }}>
           <KGSearchPanel
@@ -700,70 +760,102 @@ const KnowledgeGraphViewer: React.FC<KGVisualizationProps> = ({
         flex: 1, 
         height: '100%',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        position: 'relative',
+        minWidth: 0 // 防止 flex 子元素溢出
       }}>
-        <Card 
-          title="知识图谱" 
-          style={{ 
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-          styles={{ 
-            body: { 
-              padding: 0, 
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column'
-            } 
-          }}
-        >
-          <Spin 
-            spinning={loading}
+        {showControls ? (
+          <Card 
+            title="知识图谱" 
             style={{ 
               height: '100%',
               display: 'flex',
               flexDirection: 'column'
             }}
+            styles={{ 
+              body: { 
+                padding: '8px', 
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                overflow: 'hidden'
+              },
+              header: {
+                padding: '12px 16px',
+                minHeight: '48px'
+              }
+            }}
           >
-            <div className="kg-container" style={{ 
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
-              <div
-                ref={cyRef}
-                style={{
-                  width: '100%',
-                  flex: 1,
-                  minHeight: height || 400,
-                  border: '1px solid #d9d9d9',
-                  borderRadius: '6px'
-                }}
-              />
-              <div className="kg-scroll-hint" style={{
-                position: 'absolute',
-                bottom: '10px',
-                right: '10px',
-                fontSize: '12px',
-                color: '#999',
-                backgroundColor: 'rgba(255,255,255,0.8)',
-                padding: '4px 8px',
-                borderRadius: '4px'
+            <Spin 
+              spinning={loading}
+              style={{ 
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
+              <div className="kg-container" style={{ 
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                overflow: 'hidden'
               }}>
-                使用滚轮缩放，拖拽移动视图
+                <div
+                  ref={cyRef}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    border: '1px solid #e8e8e8',
+                    borderRadius: '4px',
+                    backgroundColor: '#fafafa'
+                  }}
+                />
+                <div className="kg-scroll-hint" style={{
+                  position: 'absolute',
+                  bottom: '16px',
+                  right: '16px',
+                  fontSize: '12px',
+                  color: '#666',
+                  backgroundColor: 'rgba(255,255,255,0.95)',
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  border: '1px solid #e8e8e8'
+                }}>
+                  💡 使用滚轮缩放，拖拽移动视图
+                </div>
               </div>
-            </div>
+            </Spin>
+          </Card>
+        ) : (
+          <Spin 
+            spinning={loading}
+            style={{ 
+              height: '100%',
+              width: '100%'
+            }}
+          >
+            <div
+              ref={cyRef}
+              style={{
+                width: '100%',
+                height: typeof height === 'number' ? `${height}px` : (height || '100%'),
+                minHeight: typeof height === 'number' ? height : 400,
+                position: 'relative',
+                backgroundColor: '#fafafa'
+              }}
+            />
           </Spin>
-        </Card>
+        )}
       </div>
       
       {/* 详情面板 */}
-      {(selectedEntity || selectedRelation) && (
+      {showControls && (selectedEntity || selectedRelation) && (
         <div style={{ 
-          width: '280px', 
+          width: '320px', 
           height: '100%',
-          marginLeft: '16px',
           flexShrink: 0
         }}>
           <KGEntityPanel

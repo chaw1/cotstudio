@@ -30,33 +30,34 @@ export const fileService = {
   },
 
   // 触发OCR处理
-  async triggerOCR(fileId: string, ocrEngine?: string): Promise<void> {
-    return api.post(`/ocr/process`, { 
+  async triggerOCR(fileId: string, ocrEngine?: string, engineConfig?: any): Promise<void> {
+    const requestBody: any = { 
       file_id: fileId, 
       engine: ocrEngine || 'paddleocr',
       user_id: 'admin' // 临时使用固定用户ID
-    });
+    };
+    
+    // 如果提供了引擎配置，添加到请求中
+    if (engineConfig) {
+      requestBody.config = engineConfig;
+    }
+    
+    return api.post(`/ocr/process`, requestBody);
   },
 
   // 获取文件切片
   async getFileSlices(fileId: string): Promise<any[]> {
-    // 模拟切片数据
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const mockSlices = Array.from({ length: 25 }, (_, index) => ({
-          id: `slice_${index + 1}`,
-          fileId,
-          content: `这是第 ${index + 1} 个切片的内容。这里包含了从原文档中提取的文本内容，可能是段落、表格或图像的描述信息。内容长度会根据实际的文档结构而变化，有些切片可能包含更多的文本，有些则相对较短。`,
-          startOffset: index * 100,
-          endOffset: (index + 1) * 100 - 1,
-          sliceType: ['paragraph', 'image', 'table'][index % 3] as 'paragraph' | 'image' | 'table',
-          pageNumber: Math.floor(index / 3) + 1,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }));
-        resolve(mockSlices);
-      }, 1000);
-    });
+    try {
+      const response = await api.get(`/ocr/slices/${fileId}?page=1&size=1000`);
+      // 后端返回的是 ResponseModel 包装的数据
+      if (response.data && response.data.slices) {
+        return response.data.slices;
+      }
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch file slices:', error);
+      return [];
+    }
   },
 
   // 获取OCR任务状态
@@ -67,5 +68,15 @@ export const fileService = {
   // 取消OCR任务
   async cancelOCRTask(taskId: string): Promise<void> {
     return api.post(`/ocr/tasks/${taskId}/cancel`);
+  },
+
+  // 获取文件OCR状态
+  async getFileOCRStatus(fileId: string): Promise<any> {
+    return api.get(`/ocr/status/${fileId}`);
+  },
+
+  // 停止文件OCR处理
+  async stopFileOCR(fileId: string): Promise<any> {
+    return api.post(`/ocr/stop/${fileId}`);
   },
 };

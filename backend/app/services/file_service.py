@@ -34,9 +34,9 @@ class FileService(BaseService[File]):
     
     def get_by_project(self, db: Session, project_id: str) -> List[File]:
         """
-        根据项目ID获取文件列表
+        根据项目ID获取文件列表,按创建时间倒序排序
         """
-        return db.query(File).filter(File.project_id == project_id).all()
+        return db.query(File).filter(File.project_id == project_id).order_by(File.created_at.desc()).all()
     
     def get_by_hash(self, db: Session, file_hash: str) -> Optional[File]:
         """

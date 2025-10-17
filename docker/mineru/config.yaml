@@ -1,0 +1,69 @@
+# MinerU Configuration Template
+# MinerU引擎配置模板
+
+# MinerU服务配置
+mineru:
+  # 服务地址
+  service_url: "http://mineru:8001"
+  
+  # 默认处理模式
+  default_backend: "pipeline"  # pipeline: 快速模式, vlm-transformers: 高精度模式
+  
+  # 计算设备
+  default_device: "cuda"  # cuda: GPU, cpu: CPU
+  
+  # 批处理大小
+  batch_size: 8  # GPU推荐8, CPU推荐2
+  
+  # 超时设置 (秒)
+  timeout: 300  # 5分钟
+  
+  # 重试配置
+  max_retries: 3
+  retry_delay: 5
+  
+  # API配置 (如使用远程API)
+  use_api: false
+  api_url: ""
+  api_key: ""
+
+# 模型配置
+models:
+  # 模型存储路径
+  path: "/app/models"
+  
+  # 自动下载
+  auto_download: true
+  
+  # 下载镜像
+  mirror: "https://mirrors.aliyun.com/pypi/simple"
+
+# GPU配置
+gpu:
+  # GPU设备ID
+  device_ids: "0"
+  
+  # 显存限制 (MB, 0表示不限制)
+  memory_limit: 0
+  
+  # 允许显存增长
+  allow_growth: true
+
+# CPU配置  
+cpu:
+  # CPU线程数 (0表示自动)
+  threads: 0
+  
+  # 内存限制 (MB, 0表示不限制)
+  memory_limit: 0
+
+# 日志配置
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+# 缓存配置
+cache:
+  enabled: true
+  ttl: 3600  # 秒
+  max_size: 1000  # 最大缓存条目数

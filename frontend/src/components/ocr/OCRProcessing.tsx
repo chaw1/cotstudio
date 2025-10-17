@@ -47,60 +47,120 @@ const OCRProcessing: React.FC<OCRProcessingProps> = ({
   const headingId = generateId('ocr-heading');
   const statusId = generateId('ocr-status');
 
-  // 模拟WebSocket连接用于实时更新OCR进度
+  // 轮询后端获取真实的OCR状态
   useEffect(() => {
     let interval: NodeJS.Timeout;
+    let pollCount = 0;
     
     if (ocrTask && ocrTask.status === 'processing') {
-      interval = setInterval(() => {
-        // 模拟进度更新
-        setOcrTask(prev => {
-          if (!prev || prev.status !== 'processing') return prev;
+      interval = setInterval(async () => {
+        try {
+          pollCount++;
           
-          const newProgress = Math.min(prev.progress + Math.random() * 10, 95);
-          const newLogs = [...prev.logs];
+          // 获取文件最新OCR状态
+          const statusData = await fileService.getFileOCRStatus(file.id);
           
-          // 随机添加日志
-          if (Math.random() > 0.7) {
-            newLogs.push({
-              timestamp: new Date().toISOString(),
-              level: 'info',
-              message: getRandomLogMessage(newProgress),
-            });
+          // 根据轮询次数添加状态更新日志
+          const addStatusLog = (message: string, level: 'info' | 'warning' | 'error' = 'info') => {
+            setOcrTask(prev => prev ? {
+              ...prev,
+              logs: [
+                ...prev.logs,
+                {
+                  timestamp: new Date().toISOString(),
+                  level,
+                  message,
+                },
+              ],
+            } : null);
+          };
+          
+          // 定期添加心跳日志(每15秒一次)
+          if (pollCount % 7 === 0 && statusData.ocr_status === 'PROCESSING') {
+            addStatusLog(`▸ MinerU引擎正在处理中... (已处理${Math.floor(pollCount * 2 / 60)}分${(pollCount * 2) % 60}秒)`);
           }
           
-          return {
+          // 检查OCR状态
+          if (statusData.ocr_status === 'COMPLETED') {
+            // OCR完成,获取切片数量
+            const slicesData = await fileService.getFileSlices(file.id);
+            
+            setOcrTask(prev => prev ? {
+              ...prev,
+              status: 'completed',
+              progress: 100,
+              endTime: new Date().toISOString(),
+              result: {
+                totalPages: slicesData.length || 0,
+                processedPages: slicesData.length || 0,
+                extractedText: statusData.ocr_result?.length || 0,
+                detectedTables: 0,
+                detectedImages: 0,
+                slicesGenerated: slicesData.length || 0,
+              },
+              logs: [
+                ...prev.logs,
+                {
+                  timestamp: new Date().toISOString(),
+                  level: 'info',
+                  message: `✓ OCR处理完成！生成${slicesData.length || 0}个切片，提取${statusData.ocr_result?.length || 0}个字符`,
+                },
+              ],
+            } : null);
+            
+            announceToScreenReader(`OCR处理已完成，生成了${slicesData.length || 0}个切片`, 'assertive');
+            // 加载切片数据
+            loadSlices();
+          } else if (statusData.ocr_status === 'FAILED') {
+            // OCR失败
+            const errorMsg = statusData.ocr_result || 'OCR处理失败';
+            
+            setOcrTask(prev => prev ? {
+              ...prev,
+              status: 'failed',
+              progress: 0,
+              endTime: new Date().toISOString(),
+              error: errorMsg,
+              logs: [
+                ...prev.logs,
+                {
+                  timestamp: new Date().toISOString(),
+                  level: 'error',
+                  message: `✗ OCR处理失败: ${errorMsg}`,
+                },
+                {
+                  timestamp: new Date().toISOString(),
+                  level: 'error',
+                  message: '请检查PDF文件格式或尝试更换OCR引擎',
+                },
+              ],
+            } : null);
+            
+            message.error(`OCR处理失败: ${errorMsg}`);
+            announceToScreenReader('OCR处理失败', 'assertive');
+          }
+          // 如果还在处理中(PROCESSING),继续轮询
+        } catch (error) {
+          console.error('获取OCR状态失败:', error);
+          setOcrTask(prev => prev ? {
             ...prev,
-            progress: newProgress,
-            logs: newLogs,
-          };
-        });
-      }, 2000);
+            logs: [
+              ...prev.logs,
+              {
+                timestamp: new Date().toISOString(),
+                level: 'warning',
+                message: `⚠ 轮询状态时出错: ${error}`,
+              },
+            ],
+          } : null);
+        }
+      }, 2000); // 每2秒轮询一次
     }
     
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [ocrTask]);
-
-  // 获取随机日志消息
-  const getRandomLogMessage = (progress: number): string => {
-    const messages = [
-      '正在解析文档结构...',
-      '检测到文本区域',
-      '正在识别文字内容...',
-      '处理表格结构...',
-      '提取图像信息...',
-      '生成文档切片...',
-      '优化识别结果...',
-    ];
-    
-    if (progress < 20) return messages[0];
-    if (progress < 40) return messages[1];
-    if (progress < 60) return messages[2];
-    if (progress < 80) return messages[3];
-    return messages[Math.floor(Math.random() * messages.length)];
-  };
+  }, [ocrTask, file.id]);
 
   // 开始OCR处理
   const handleStartOCR = async (config: OCREngineConfig) => {
@@ -108,8 +168,21 @@ const OCRProcessing: React.FC<OCRProcessingProps> = ({
     announceToScreenReader(`开始使用 ${config.engine} 引擎处理文件 ${file.filename}`, 'assertive');
     
     try {
+      // 准备引擎配置参数
+      const engineConfig: any = {};
+      
+      // 如果是MinerU引擎，添加专用配置
+      if (config.engine === 'mineru') {
+        engineConfig.use_gpu = config.use_gpu;
+        engineConfig.recognition_mode = config.recognition_mode;
+        engineConfig.backend = config.backend;
+        engineConfig.device = config.device;
+        engineConfig.batch_size = config.batch_size;
+        engineConfig.output_format = config.output_format;
+      }
+      
       // 调用OCR服务
-      await fileService.triggerOCR(file.id, config.engine);
+      await fileService.triggerOCR(file.id, config.engine, engineConfig);
       
       // 创建OCR任务对象
       const newTask: OCRTask = {
@@ -132,36 +205,6 @@ const OCRProcessing: React.FC<OCRProcessingProps> = ({
       setOcrTask(newTask);
       setActiveTab('progress');
       announceToScreenReader('OCR处理已开始，正在切换到进度页面');
-      
-      // 模拟处理完成
-      setTimeout(() => {
-        setOcrTask(prev => prev ? {
-          ...prev,
-          status: 'completed',
-          progress: 100,
-          endTime: new Date().toISOString(),
-          result: {
-            totalPages: 10,
-            processedPages: 10,
-            extractedText: 15420,
-            detectedTables: 3,
-            detectedImages: 5,
-            slicesGenerated: 25,
-          },
-          logs: [
-            ...prev.logs,
-            {
-              timestamp: new Date().toISOString(),
-              level: 'info',
-              message: 'OCR处理完成，生成25个切片',
-            },
-          ],
-        } : null);
-        
-        announceToScreenReader('OCR处理已完成，生成了25个切片', 'assertive');
-        // 加载切片数据
-        loadSlices();
-      }, 10000);
       
     } catch (error) {
       const errorMessage = '启动OCR处理失败';

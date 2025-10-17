@@ -43,7 +43,12 @@ services:
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin123
       - RABBITMQ_URL=amqp://cotuser:cotpass@rabbitmq:5672/
+      - MINERU_SERVICE_URL=http://mineru:8001
       - DEBUG=true
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - NO_PROXY=mineru,localhost,127.0.0.1,postgres,redis,neo4j,minio,rabbitmq
+      - no_proxy=mineru,localhost,127.0.0.1,postgres,redis,neo4j,minio,rabbitmq
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,8 +60,19 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      mineru:
+        condition: service_healthy
+    # GPU支持 - 用于监控GPU状态
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, utility]
     volumes:
       - ./backend:/app
+      - ./mineru:/app/mineru
     networks:
       - cot-network
     restart: unless-stopped
@@ -67,12 +83,53 @@ services:
       retries: 3
       start_period: 40s
 
+  # MinerU OCR服务 (GPU加速的PDF文档解析)
+  mineru:
+    build:
+      context: ./docker/mineru
+      dockerfile: Dockerfile.minimal  # 最简化版本,仅依赖pip
+    command: python /app/mineru_service.py
+    ports:
+      - "8001:8001"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8001
+      - CUDA_VISIBLE_DEVICES=0
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - http_proxy=
+      - https_proxy=
+      - NO_PROXY=*
+      - no_proxy=*
+    volumes:
+      - mineru_models:/app/models
+      - mineru_temp:/app/temp
+      - mineru_output:/app/output
+      - ./docker/mineru/mineru_service.py:/app/mineru_service.py  # 开发时挂载源代码
+    networks:
+      - cot-network
+    restart: unless-stopped
+    # GPU支持 (如果有NVIDIA GPU)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # MinerU启动需要更长时间
+
   # Celery异步任务处理器
   celery:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A app.worker worker --loglevel=info --concurrency=2 --queues=celery,ocr,llm,kg,files
+    command: celery -A app.worker worker --loglevel=info --concurrency=2 -Q celery,ocr,llm,kg
     environment:
       - DATABASE_URL=postgresql://cotuser:cotpass@postgres:5432/cotdb
       - REDIS_URL=redis://redis:6379
@@ -83,6 +140,9 @@ services:
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin123
       - RABBITMQ_URL=amqp://cotuser:cotpass@rabbitmq:5672/
+      - MINERU_SERVICE_URL=http://mineru:8001
+      - NO_PROXY=mineru,localhost,127.0.0.1,postgres,redis,neo4j,minio,rabbitmq
+      - no_proxy=mineru,localhost,127.0.0.1,postgres,redis,neo4j,minio,rabbitmq
     depends_on:
       postgres:
         condition: service_healthy
@@ -92,6 +152,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - ./mineru:/app/mineru
     networks:
       - cot-network
     restart: unless-stopped
@@ -200,7 +261,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6380:6379"
+      - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -221,8 +282,8 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin123
     ports:
-      - "9002:9000"
-      - "9003:9001"
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - minio_data:/data
     networks:
@@ -264,6 +325,9 @@ volumes:
   redis_data:
   minio_data:
   rabbitmq_data:
+  mineru_models:    # MinerU模型文件存储
+  mineru_temp:      # MinerU临时文件
+  mineru_output:    # MinerU输出文件
 
 networks:
   cot-network:

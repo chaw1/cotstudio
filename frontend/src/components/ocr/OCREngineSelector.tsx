@@ -11,12 +11,15 @@ import {
   Collapse,
   InputNumber,
   Switch,
-  message,
+  Radio,
+  App,
 } from 'antd';
 import {
   SettingOutlined,
   PlayCircleOutlined,
   InfoCircleOutlined,
+  ThunderboltOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -38,6 +41,13 @@ export interface OCREngineConfig {
   enableImageDetection: boolean;
   language: string;
   customParams?: Record<string, any>;
+  // MinerU专用配置
+  use_gpu?: boolean;
+  recognition_mode?: 'fast' | 'accurate';
+  backend?: 'pipeline' | 'vlm-transformers';
+  device?: 'cuda' | 'cpu';
+  batch_size?: number;
+  output_format?: string;
 }
 
 interface OCREngineSelectorProps {
@@ -51,45 +61,45 @@ const OCREngineSelector: React.FC<OCREngineSelectorProps> = ({
   onStartOCR,
   loading = false,
 }) => {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
-  const [selectedEngine, setSelectedEngine] = useState<string>('fallback');
+  const [selectedEngine, setSelectedEngine] = useState<string>('paddleocr');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // 可用的OCR引擎
   const availableEngines: OCREngine[] = [
     {
-      id: 'fallback',
-      name: 'Text Extractor',
-      description: '文本提取器，支持TXT、MD、JSON等纯文本文件',
+      id: 'paddleocr',
+      name: 'PaddleOCR',
+      description: '百度开源OCR引擎，支持多语言，准确率高',
       supported: true,
       config: {
-        languages: ['auto'],
-        defaultLanguage: 'auto',
+        languages: ['ch', 'en', 'fr', 'german', 'korean', 'japan'],
+        defaultLanguage: 'ch',
       },
     },
-    // 以下引擎暂未实现，待后续版本支持
-    // {
-    //   id: 'alibaba_alm',
-    //   name: 'Alibaba AdvancedLiterateMachinery',
-    //   description: '阿里巴巴高级文档理解引擎，专业处理学术文档',
-    //   supported: false,
-    //   config: {
-    //     languages: ['zh-cn', 'en'],
-    //     defaultLanguage: 'zh-cn',
-    //   },
-    // },
-    // {
-    //   id: 'mineru',
-    //   name: 'MinerU',
-    //   description: '专业的PDF文档解析工具，保持原始格式',
-    //   supported: false,
-    //   config: {
-    //     languages: ['zh-cn', 'en', 'auto'],
-    //     defaultLanguage: 'auto',
-    //     preserveLayout: true,
-    //     extractImages: true,
-    //   },
-    // },
+    {
+      id: 'alibaba_alm',
+      name: 'Alibaba AdvancedLiterateMachinery',
+      description: '阿里巴巴高级文档理解引擎，专业处理学术文档',
+      supported: true,
+      config: {
+        languages: ['zh-cn', 'en'],
+        defaultLanguage: 'zh-cn',
+      },
+    },
+    {
+      id: 'mineru',
+      name: 'MinerU',
+      description: '专业的PDF文档解析工具，保持原始格式',
+      supported: true,
+      config: {
+        languages: ['zh-cn', 'en', 'auto'], // 添加语言支持
+        defaultLanguage: 'auto',
+        preserveLayout: true,
+        extractImages: true,
+      },
+    },
   ];
 
   const selectedEngineInfo = availableEngines.find(e => e.id === selectedEngine);
@@ -102,9 +112,21 @@ const OCREngineSelector: React.FC<OCREngineSelectorProps> = ({
         confidence: values.confidence || 0.8,
         enableTableDetection: values.enableTableDetection ?? true,
         enableImageDetection: values.enableImageDetection ?? true,
-        language: values.language || selectedEngineInfo?.config?.defaultLanguage || 'auto',
+        language: values.language || selectedEngineInfo?.config?.defaultLanguage || 'ch',
         customParams: values.customParams || {},
       };
+
+      // 如果是MinerU引擎，添加专用配置
+      if (selectedEngine === 'mineru') {
+        config.use_gpu = values.use_gpu ?? true;
+        config.recognition_mode = values.recognition_mode || 'fast';
+        config.batch_size = values.batch_size || 8;
+        config.output_format = 'markdown';
+        
+        // 根据配置设置backend和device
+        config.device = config.use_gpu ? 'cuda' : 'cpu';
+        config.backend = config.recognition_mode === 'fast' ? 'pipeline' : 'vlm-transformers';
+      }
 
       await onStartOCR(config);
       message.success('OCR处理已开始');
@@ -116,7 +138,7 @@ const OCREngineSelector: React.FC<OCREngineSelectorProps> = ({
   // 重置表单
   const handleReset = () => {
     form.resetFields();
-    setSelectedEngine('fallback');
+    setSelectedEngine('paddleocr');
   };
 
   useEffect(() => {
@@ -154,7 +176,7 @@ const OCREngineSelector: React.FC<OCREngineSelectorProps> = ({
           confidence: 0.8,
           enableTableDetection: true,
           enableImageDetection: true,
-          language: selectedEngineInfo?.config?.defaultLanguage || 'auto',
+          language: selectedEngineInfo?.config?.defaultLanguage || 'ch',
         }}
       >
         {/* 引擎选择 */}
@@ -167,19 +189,24 @@ const OCREngineSelector: React.FC<OCREngineSelectorProps> = ({
             value={selectedEngine}
             onChange={setSelectedEngine}
             placeholder="选择OCR引擎"
+            optionLabelProp="label"
           >
             {availableEngines.map((engine) => (
               <Option
                 key={engine.id}
                 value={engine.id}
                 disabled={!engine.supported}
+                label={engine.name}
               >
-                <div>
-                  <Text strong>{engine.name}</Text>
-                  <br />
-                  <Text type="secondary" style={{ fontSize: '12px' }}>
-                    {engine.description}
-                  </Text>
+                <div style={{ padding: '4px 0' }}>
+                  <div>
+                    <Text strong>{engine.name}</Text>
+                  </div>
+                  <div>
+                    <Text type="secondary" style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                      {engine.description}
+                    </Text>
+                  </div>
                 </div>
               </Option>
             ))}
@@ -262,6 +289,83 @@ const OCREngineSelector: React.FC<OCREngineSelectorProps> = ({
                     <Option value="ch_PP-OCRv3_det">PP-OCRv3检测模型</Option>
                   </Select>
                 </Form.Item>
+              )}
+
+              {selectedEngine === 'mineru' && (
+                <>
+                  <Form.Item
+                    label="GPU加速"
+                    name="use_gpu"
+                    valuePropName="checked"
+                    initialValue={true}
+                    help="启用GPU可以大幅提升处理速度，需要NVIDIA显卡支持"
+                  >
+                    <Switch 
+                      checkedChildren="已启用" 
+                      unCheckedChildren="已禁用" 
+                    />
+                  </Form.Item>
+                  
+                  <Form.Item
+                    label="识别模式"
+                    name="recognition_mode"
+                    initialValue="fast"
+                    help="快速模式速度快，高精度模式准确率更高但速度较慢"
+                  >
+                    <Radio.Group>
+                      <Space direction="vertical">
+                        <Radio value="fast">
+                          <Space>
+                            <ThunderboltOutlined />
+                            <div>
+                              <div><Text strong>快速模式 (Pipeline)</Text></div>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                速度快，适合大批量处理
+                              </Text>
+                            </div>
+                          </Space>
+                        </Radio>
+                        <Radio value="accurate">
+                          <Space>
+                            <CheckCircleOutlined />
+                            <div>
+                              <div><Text strong>高精度模式 (VLM)</Text></div>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                识别精度高，适合复杂文档
+                              </Text>
+                            </div>
+                          </Space>
+                        </Radio>
+                      </Space>
+                    </Radio.Group>
+                  </Form.Item>
+                  
+                  <Form.Item
+                    label="批处理大小"
+                    name="batch_size"
+                    initialValue={8}
+                    help="GPU模式下可以设置更大的批处理大小以提升速度"
+                  >
+                    <InputNumber
+                      min={1}
+                      max={32}
+                      style={{ width: '100%' }}
+                    />
+                  </Form.Item>
+                  
+                  <Alert
+                    message="模式说明"
+                    description={
+                      <div style={{ fontSize: '12px' }}>
+                        <p><strong>快速模式</strong>: 使用Pipeline架构，速度快，适合大批量文档处理</p>
+                        <p><strong>高精度模式</strong>: 使用视觉语言模型(VLM)，识别精度更高，特别适合包含公式、表格等复杂结构的学术文档</p>
+                      </div>
+                    }
+                    type="info"
+                    showIcon
+                    style={{ marginTop: 16 }}
+                  />
+                </>
               )}
 
               {selectedEngine === 'alibaba_alm' && (

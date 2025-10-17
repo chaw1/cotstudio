@@ -199,8 +199,8 @@ const Sidebar: React.FC<SidebarProps> = ({
           alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'flex-start',
           padding: headerPadding,
-          borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
-          background: 'transparent',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          background: 'rgba(255, 255, 255, 0.02)',
           flexShrink: 0,
           transition: 'all 0.2s ease'
         }}
@@ -263,15 +263,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       </header>
 
       {/* 主菜单区域 */}
-      <div
+      <div 
         role="region"
         aria-labelledby={navigationId}
-        style={{
-          flex: 1,
+        style={{ 
+          flex: 1, 
           overflow: 'auto',
-          paddingTop: '16px',
-          paddingBottom: '16px',
-          background: 'transparent'
+          paddingTop: '16px'
         }}
       >
         <ScreenReaderOnly>
@@ -298,18 +296,18 @@ const Sidebar: React.FC<SidebarProps> = ({
         />
         
         {/* 分割线 */}
-        <div
+        <div 
           role="separator"
           aria-hidden="true"
           style={{
             margin: '16px 12px',
             height: '1px',
-            background: 'rgba(255, 255, 255, 0.03)'
-          }}
+            background: 'rgba(255, 255, 255, 0.1)'
+          }} 
         />
         
         {/* 管理菜单 */}
-        <div role="region" aria-label="管理功能" style={{ background: 'transparent' }}>
+        <div role="region" aria-label="管理功能">
           <ScreenReaderOnly>
             <h3>管理功能</h3>
           </ScreenReaderOnly>
@@ -341,7 +339,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         aria-label="用户控制区域"
         style={{
           padding: collapsed ? '12px 8px' : '16px 12px',
-          background: 'transparent'
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          background: 'rgba(255, 255, 255, 0.05)'
         }}
       >
         {/* 通知按钮 */}

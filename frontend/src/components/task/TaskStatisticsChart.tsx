@@ -100,7 +100,7 @@ const TaskStatisticsChart: React.FC<TaskStatisticsChartProps> = ({ statistics })
           <Card>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {(statistics.success_rate * 100).toFixed(1)}%
+                {(statistics.success_rate * 100).toFixed(2)}%
               </div>
               <div className="text-gray-500">成功率</div>
             </div>
@@ -110,7 +110,7 @@ const TaskStatisticsChart: React.FC<TaskStatisticsChartProps> = ({ statistics })
           <Card>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">
-                {statistics.average_duration ? `${statistics.average_duration.toFixed(1)}s` : '-'}
+                {statistics.average_duration ? `${statistics.average_duration.toFixed(2)}s` : '-'}
               </div>
               <div className="text-gray-500">平均执行时间</div>
             </div>

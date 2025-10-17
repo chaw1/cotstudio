@@ -1,0 +1,89 @@
+# MinerU 2.5 OCR Service Dockerfile
+# 临时方案:使用Ubuntu基础镜像+手动安装CUDA工具
+
+FROM ubuntu:22.04
+
+# 设置环境变量
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PYTHONIOENCODING=UTF-8 \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
+# 设置工作目录
+WORKDIR /app
+
+# 替换为阿里云Ubuntu镜像源
+RUN sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list && \
+    sed -i 's/security.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list
+
+# 安装系统依赖和Python 3.10 (分步安装以提高成功率)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 \
+    python3.10-dev \
+    python3-pip \
+    wget \
+    curl \
+    git \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装图形处理相关库 (单独安装避免大包下载失败)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libgomp1 \
+    libfontconfig1 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# 配置pip使用阿里云镜像
+RUN pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
+    pip3 config set install.trusted-host mirrors.aliyun.com
+
+# 升级pip和安装uv包管理器
+RUN python3.10 -m pip install --upgrade pip && \
+    pip3 install uv
+
+# 使用阿里云镜像安装MinerU (CPU版本,支持基础OCR功能)
+RUN uv pip install --system -i https://mirrors.aliyun.com/pypi/simple/ \
+    "mineru>=2.5.0" \
+    fastapi \
+    uvicorn[standard] \
+    python-multipart \
+    opencv-python-headless \
+    requests
+
+# 安装PyTorch CPU版本 (如果有GPU,启动时会自动检测)
+RUN pip3 install torch==2.5.1 torchvision torchaudio \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# 创建必要的目录
+RUN mkdir -p /app/models /app/temp /app/output /app/scripts
+
+# 复制服务文件
+COPY mineru_service.py /app/
+COPY config.yaml /app/
+COPY scripts/download_mineru_models.sh /app/scripts/
+
+# 设置脚本执行权限
+RUN chmod +x /app/scripts/download_mineru_models.sh
+
+# 创建非root用户
+RUN useradd -m -u 1000 mineru && \
+    chown -R mineru:mineru /app
+
+USER mineru
+
+# 暴露服务端口
+EXPOSE 8001
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD python3 -c "import mineru; print('MinerU OK')" || exit 1
+
+# 启动服务
+CMD ["python3", "mineru_service.py"]

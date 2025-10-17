@@ -103,7 +103,21 @@ class ApiClient {
 
   // GET请求
   async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.get<T>(url, config);
+    // 强制禁用所有缓存,添加时间戳确保每次请求都是新的
+    const timestamp = new Date().getTime();
+    const separator = url.includes('?') ? '&' : '?';
+    const urlWithTimestamp = `${url}${separator}_t=${timestamp}`;
+    
+    const finalConfig = {
+      ...config,
+      headers: {
+        ...config?.headers,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    };
+    const response = await this.instance.get<T>(urlWithTimestamp, finalConfig);
     return response.data;
   }
 

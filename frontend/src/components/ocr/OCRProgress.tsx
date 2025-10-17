@@ -287,48 +287,119 @@ const OCRProgress: React.FC<OCRProgressProps> = ({
         </Card>
       )}
 
-      {/* 处理日志 */}
-      {task.logs.length > 0 && (
-        <Card
-          title="处理日志"
-          size="small"
-          extra={
-            <Button
-              type="link"
-              onClick={() => setShowLogs(!showLogs)}
-            >
-              {showLogs ? '隐藏日志' : '显示日志'}
-            </Button>
-          }
+      {/* MinerU实时处理控制台 */}
+      <Card
+        title={
+          <Space>
+            <span>MinerU处理控制台</span>
+            {task.status === 'processing' && (
+              <LoadingOutlined style={{ color: '#1677ff' }} />
+            )}
+          </Space>
+        }
+        size="small"
+        style={{ marginBottom: 16 }}
+        bodyStyle={{
+          padding: 0,
+          backgroundColor: '#1e1e1e',
+          color: '#d4d4d4',
+          fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+          fontSize: '12px',
+          lineHeight: '1.5',
+        }}
+      >
+        <div
+          style={{
+            maxHeight: '400px',
+            minHeight: '200px',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            padding: '12px',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+          }}
+          ref={(el) => {
+            // 自动滚动到底部显示最新日志
+            if (el && task.status === 'processing') {
+              el.scrollTop = el.scrollHeight;
+            }
+          }}
         >
-          {showLogs && (
-            <Timeline
-              mode="left"
-              style={{ maxHeight: 300, overflowY: 'auto' }}
-            >
-              {task.logs.map((log, index) => (
-                <Timeline.Item
+          {task.logs.length === 0 ? (
+            <div style={{ color: '#6a9955', fontStyle: 'italic' }}>
+              # 等待MinerU引擎输出...
+            </div>
+          ) : (
+            task.logs.map((log, index) => {
+              const timeStr = new Date(log.timestamp).toLocaleTimeString('zh-CN', { 
+                hour12: false 
+              });
+              
+              // 根据日志级别设置颜色
+              const getLogColor = () => {
+                if (log.level === 'error') return '#f48771';
+                if (log.level === 'warning') return '#dcdcaa';
+                if (log.message.includes('✓') || log.message.includes('成功') || log.message.includes('完成')) {
+                  return '#4ec9b0';
+                }
+                if (log.message.includes('开始') || log.message.includes('初始化')) {
+                  return '#569cd6';
+                }
+                return '#d4d4d4';
+              };
+              
+              // 高亮关键信息
+              const formatMessage = (msg: string) => {
+                // 数字高亮
+                msg = msg.replace(/(\d+)/g, '<span style="color: #b5cea8">$1</span>');
+                // 文件名高亮
+                msg = msg.replace(/([^\s]+\.(pdf|png|jpg|jpeg|md))/gi, '<span style="color: #ce9178">$1</span>');
+                // 成功标记高亮
+                msg = msg.replace(/(✓|✅|成功|完成)/g, '<span style="color: #4ec9b0; font-weight: bold">$1</span>');
+                // 错误标记高亮
+                msg = msg.replace(/(✗|❌|失败|错误|ERROR)/g, '<span style="color: #f48771; font-weight: bold">$1</span>');
+                // 警告标记高亮
+                msg = msg.replace(/(⚠|WARNING|警告)/g, '<span style="color: #dcdcaa; font-weight: bold">$1</span>');
+                return msg;
+              };
+              
+              return (
+                <div
                   key={index}
-                  color={
-                    log.level === 'error' ? 'red' :
-                    log.level === 'warning' ? 'orange' : 'blue'
-                  }
-                  label={new Date(log.timestamp).toLocaleTimeString('zh-CN')}
+                  style={{
+                    marginBottom: '4px',
+                    paddingLeft: '8px',
+                    borderLeft: `2px solid ${log.level === 'error' ? '#f48771' : log.level === 'warning' ? '#dcdcaa' : '#3794ff'}`,
+                  }}
                 >
-                  <Text
-                    type={
-                      log.level === 'error' ? 'danger' :
-                      log.level === 'warning' ? 'warning' : 'secondary'
-                    }
-                  >
-                    {log.message}
-                  </Text>
-                </Timeline.Item>
-              ))}
-            </Timeline>
+                  <span style={{ color: '#858585', marginRight: '8px' }}>
+                    [{timeStr}]
+                  </span>
+                  <span 
+                    style={{ color: getLogColor() }}
+                    dangerouslySetInnerHTML={{ __html: formatMessage(log.message) }}
+                  />
+                </div>
+              );
+            })
           )}
-        </Card>
-      )}
+          
+          {/* 处理中的动画提示 */}
+          {task.status === 'processing' && (
+            <div style={{ color: '#569cd6', marginTop: '8px', animation: 'blink 1.5s infinite' }}>
+              ▸ 处理中...
+            </div>
+          )}
+        </div>
+        
+        {/* CSS动画 */}
+        <style>{`
+          @keyframes blink {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.5; }
+          }
+        `}</style>
+      </Card>
 
       {/* 实时状态指示器 */}
       {task.status === 'processing' && (

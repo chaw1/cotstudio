@@ -35,22 +35,22 @@
   "ocr_engines": [
     {
       "engine": "paddleocr",
-      "enabled": true,
+      "enabled": false,
       "priority": 1,
       "parameters": {
-        "use_angle_cls": true,
-        "lang": "ch",
-        "use_gpu": false
+        "useApi": false
       }
     },
     {
       "engine": "mineru",
       "enabled": true,
-      "priority": 2,
+      "priority": 1,
       "parameters": {
-        "layout_detection": true,
-        "formula_detection": true,
-        "table_detection": true
+        "use_gpu": true,
+        "recognition_mode": "accurate",
+        "batch_size": 8,
+        "output_format": "json",
+        "useApi": false
       }
     },
     {
@@ -64,7 +64,7 @@
       }
     }
   ],
-  "default_ocr_engine": "paddleocr",
+  "default_ocr_engine": "mineru",
   "system_prompts": [
     {
       "name": "academic_question_generation",

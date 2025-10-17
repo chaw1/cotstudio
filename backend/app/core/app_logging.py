@@ -3,13 +3,13 @@
 """
 import logging
 import sys
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 import structlog
 from fastapi import Request
 
 from app.core.config import settings
+from app.core.timezone_utils import now
 
 
 def configure_logging():
@@ -72,7 +72,7 @@ class AuditLogger:
             "resource_type": resource_type,
             "resource_id": resource_id,
             "details": details or {},
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": now().isoformat(),
         }
         
         if request:
@@ -101,7 +101,7 @@ class AuditLogger:
             "action": action,
             "success": success,
             "details": details or {},
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": now().isoformat(),
         }
         
         if request:
@@ -129,7 +129,7 @@ class AuditLogger:
             "error_type": type(error).__name__,
             "error_message": str(error),
             "context": context or {},
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": now().isoformat(),
         }
         
         if request:

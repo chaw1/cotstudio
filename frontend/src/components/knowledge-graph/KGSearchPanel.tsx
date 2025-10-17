@@ -168,8 +168,12 @@ const KGSearchPanel: React.FC<KGSearchPanelProps> = ({
             onChange={(value) => handleFilterChange('entityTypes', value)}
             placeholder="选择实体类型"
             style={{ width: '100%' }}
-            maxTagCount={2}
-            maxTagTextLength={8}
+            maxTagCount={3}
+            maxTagTextLength={10}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.children as any)?.[0]?.props?.children?.toLowerCase().includes(input.toLowerCase())
+            }
           >
             {entityTypes.map(type => (
               <Option key={type} value={type}>
@@ -193,8 +197,12 @@ const KGSearchPanel: React.FC<KGSearchPanelProps> = ({
             onChange={(value) => handleFilterChange('relationTypes', value)}
             placeholder="选择关系类型"
             style={{ width: '100%' }}
-            maxTagCount={2}
-            maxTagTextLength={8}
+            maxTagCount={3}
+            maxTagTextLength={10}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.children as any)?.[0]?.props?.children?.toLowerCase().includes(input.toLowerCase())
+            }
           >
             {relationTypes.map(type => (
               <Option key={type} value={type}>
