@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Theme Test</title>
+    <link rel="stylesheet" href="src/App.css">
+    <style>
+        .test-container {
+            padding: var(--spacing-xl);
+            background: var(--color-bg-container);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+            margin: var(--spacing-lg);
+        }
+        .test-text {
+            color: var(--color-text-primary);
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-medium);
+        }
+        .test-button {
+            background: var(--color-primary);
+            color: white;
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--border-radius-md);
+            border: none;
+            font-size: var(--font-size-md);
+            transition: var(--duration-normal);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 class="test-text">Theme Configuration Test</h1>
+        <p class="text-secondary">This tests the new CSS custom properties and utility classes.</p>
+        <button class="test-button modern-button">Test Button</button>
+        <div class="mt-lg p-md bg-layout rounded-lg">
+            <span class="text-lg font-semibold">Utility Classes Test</span>
+        </div>
+    </div>
+</body>
+</html>

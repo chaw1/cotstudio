@@ -1,0 +1,166 @@
+/* Dashboard 优化样式 */
+
+/* 确保等高面板 */
+.dashboard-equal-height-row {
+  display: flex;
+  align-items: stretch;
+}
+
+.dashboard-equal-height-row .ant-col {
+  display: flex;
+}
+
+.dashboard-equal-height-row .ant-card {
+  width: 100%;
+}
+
+/* 系统监控面板优化 */
+.system-monitor-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.system-monitor-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* 用户贡献图谱优化 */
+.contribution-graph-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.contribution-graph-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 知识图谱缩放控制 */
+.kg-zoom-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.kg-zoom-controls .ant-btn {
+  margin: 2px;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  .dashboard-equal-height-row {
+    display: block;
+  }
+  
+  .dashboard-equal-height-row .ant-card {
+    height: auto !important;
+    min-height: 300px;
+  }
+}
+
+/* 登录历史信息样式 */
+.login-history-section {
+  border-top: 1px solid #f0f0f0;
+  padding-top: 12px;
+  margin-top: 8px;
+}
+
+.login-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 0;
+  font-size: 12px;
+}
+
+.login-history-icon {
+  margin-right: 4px;
+  font-size: 12px;
+}
+
+/* 贡献图谱简化样式 */
+.contribution-stats-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background-color: #fafafa;
+  border-radius: 6px;
+  border: 1px solid #f0f0f0;
+  margin-bottom: 16px;
+}
+
+/* 统计信息优化 */
+.contribution-stats-bar .ant-space-item {
+  white-space: nowrap;
+}
+
+.contribution-stats-bar .ant-space {
+  flex-wrap: wrap;
+  gap: 8px !important;
+}
+
+.contribution-graph-viewer {
+  flex: 1;
+  position: relative;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.contribution-node-details {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: #f6f8ff;
+  border-radius: 6px;
+  border: 1px solid #d9e5ff;
+}
+
+.contribution-legend {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: #fafafa;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+/* 知识图谱增强交互 */
+.kg-container {
+  position: relative;
+}
+
+.kg-container canvas {
+  cursor: grab;
+}
+
+.kg-container canvas:active {
+  cursor: grabbing;
+}
+
+/* 自适应滚轮提示 */
+.kg-scroll-hint {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.kg-container:hover .kg-scroll-hint {
+  opacity: 1;
+}

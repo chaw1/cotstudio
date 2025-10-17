@@ -1,0 +1,179 @@
+/* Settings page specific styles */
+.settings-page {
+  padding: 16px 24px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.settings-page .ant-table-wrapper {
+  overflow-x: auto;
+}
+
+.settings-page .ant-table {
+  min-width: 800px;
+}
+
+.settings-page .ant-table-thead > tr > th,
+.settings-page .ant-table-tbody > tr > td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Fix table column widths */
+.settings-page .ant-table-thead > tr > th:nth-child(1) {
+  min-width: 150px;
+  max-width: 200px;
+}
+
+.settings-page .ant-table-thead > tr > th:nth-child(2) {
+  min-width: 100px;
+  max-width: 120px;
+}
+
+.settings-page .ant-table-thead > tr > th:nth-child(3) {
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.settings-page .ant-table-thead > tr > th:nth-child(4) {
+  min-width: 150px;
+  max-width: 200px;
+}
+
+.settings-page .ant-table-thead > tr > th:nth-child(5) {
+  min-width: 200px;
+  max-width: 250px;
+}
+
+/* Responsive table for mobile */
+@media (max-width: 768px) {
+  .settings-page {
+    padding: 16px;
+  }
+  
+  .settings-page .ant-table {
+    min-width: 600px;
+  }
+  
+  .settings-page .ant-table-thead > tr > th:nth-child(3),
+  .settings-page .ant-table-thead > tr > th:nth-child(4) {
+    display: none;
+  }
+  
+  .settings-page .ant-table-tbody > tr > td:nth-child(3),
+  .settings-page .ant-table-tbody > tr > td:nth-child(4) {
+    display: none;
+  }
+}
+
+/* Modern card styling */
+.settings-page .modern-card {
+  border-radius: 12px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+}
+
+.settings-page .modern-button {
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+/* Responsive table wrapper */
+.settings-page .responsive-table {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.settings-page .responsive-table .ant-table-wrapper {
+  min-width: 100%;
+}
+
+/* Fix table content overflow */
+.settings-page .ant-table-cell {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-page .ant-table-cell-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+/* Action buttons styling */
+.settings-page .ant-btn-sm {
+  padding: 0 8px;
+  font-size: 12px;
+  height: 24px;
+  line-height: 22px;
+}
+
+/* Tag styling */
+.settings-page .ant-tag {
+  margin: 2px;
+  border-radius: 4px;
+}
+
+/* Modal responsive */
+@media (max-width: 768px) {
+  .settings-page .ant-modal {
+    max-width: calc(100vw - 32px);
+    margin: 16px;
+  }
+  
+  .settings-page .ant-modal-body {
+    padding: 16px;
+  }
+}
+
+/* Tabs responsive */
+.settings-page .ant-tabs-tab {
+  padding: 8px 16px;
+}
+
+@media (max-width: 768px) {
+  .settings-page .ant-tabs-tab {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .settings-page .ant-tabs-tab .anticon {
+    margin-right: 4px;
+  }
+}
+
+/* Alert styling */
+.settings-page .ant-alert {
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+/* Form styling */
+.settings-page .ant-form-item-label > label {
+  font-weight: 500;
+}
+
+.settings-page .ant-input,
+.settings-page .ant-select-selector,
+.settings-page .ant-input-affix-wrapper {
+  border-radius: 6px;
+}
+
+.settings-page .ant-btn {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* Pagination responsive */
+@media (max-width: 768px) {
+  .settings-page .ant-pagination {
+    text-align: center;
+  }
+  
+  .settings-page .ant-pagination-options {
+    display: none;
+  }
+}

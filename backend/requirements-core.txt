@@ -1,0 +1,58 @@
+# COT Studio Backend - Core Dependencies
+# These packages install reliably through pip
+
+# FastAPI核心依赖
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.11.9
+pydantic-settings==2.10.1
+
+# 数据库相关 (excluding problematic packages)
+sqlalchemy==2.0.23
+alembic==1.13.1
+
+# 异步任务队列
+celery==5.3.4
+redis==5.0.1
+
+# 图数据库
+neo4j==5.15.0
+
+# 认证和安全
+PyJWT[cryptography]==2.8.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
+# 文件处理
+python-magic-bin==0.4.14
+Pillow==11.3.0
+pdf2image==1.16.3
+
+# OCR处理
+paddlepaddle==3.2.0
+paddleocr==2.7.3
+
+# HTTP客户端
+httpx==0.25.2
+aiofiles==23.2.1
+
+# LLM集成
+openai==1.107.2
+langchain==0.0.350
+langchain-openai==0.0.2
+tenacity==8.2.3
+
+# 对象存储
+minio==7.2.0
+
+# 开发和测试
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+black==23.11.0
+isort==5.12.0
+flake8==6.1.0
+
+# 监控和日志
+structlog==23.2.0
+psutil==7.0.0

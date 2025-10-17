@@ -1,0 +1,60 @@
+# 通用忽略文件
+.DS_Store
+.env
+.env.local
+.env.production
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# 前端
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/coverage/
+
+# 后端
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+backend/.venv/
+backend/venv/
+
+# 数据库
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# 日志文件
+logs/
+*.log
+
+# 临时文件
+tmp/
+temp/
+
+# 测试文件
+test*.db
+test*.json
+test*.ps1
+
+# 操作系统
+Thumbs.db
+ehthumbs.db
+Desktop.ini

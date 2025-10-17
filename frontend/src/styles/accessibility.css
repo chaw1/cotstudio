@@ -1,0 +1,365 @@
+/* Accessibility Styles */
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Skip links */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #000;
+  color: #fff;
+  padding: 8px 12px;
+  text-decoration: none;
+  border-radius: 4px;
+  z-index: 9999;
+  font-size: 14px;
+  font-weight: 500;
+  transition: top 0.3s ease;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* Focus indicators */
+.focus-visible,
+*:focus-visible {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .focus-visible,
+  *:focus-visible {
+    outline: 3px solid;
+    outline-offset: 2px;
+  }
+  
+  .sidebar-nav-item:hover,
+  .sidebar-nav-item:focus {
+    background: rgba(255, 255, 255, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+  }
+  
+  .modal-container-wrap .ant-modal-content {
+    border: 2px solid #000;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .skip-link {
+    transition: none;
+  }
+}
+
+/* Keyboard navigation styles */
+.keyboard-navigation .ant-menu-item:focus,
+.keyboard-navigation .ant-btn:focus,
+.keyboard-navigation .ant-dropdown-trigger:focus {
+  outline: 2px solid #1677ff;
+  outline-offset: 2px;
+}
+
+/* Modal accessibility */
+.modal-container-wrap[role="dialog"] {
+  position: relative;
+}
+
+.modal-container-wrap .ant-modal-content {
+  position: relative;
+}
+
+/* Navigation accessibility */
+.sidebar-navigation {
+  role: navigation;
+}
+
+.sidebar-nav-item {
+  position: relative;
+}
+
+.sidebar-nav-item:focus-within::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px solid #1677ff;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* Loading states accessibility */
+.loading-spinner[aria-busy="true"] {
+  position: relative;
+}
+
+.loading-spinner[aria-busy="true"]::after {
+  content: attr(aria-label);
+  position: absolute;
+  left: -9999px;
+}
+
+/* Form accessibility */
+.form-field-error {
+  color: #ff4d4f;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.form-field-error::before {
+  content: '⚠ ';
+  font-weight: bold;
+}
+
+/* Button accessibility */
+.btn-icon-only {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Link accessibility */
+a:not([class]) {
+  color: #1677ff;
+  text-decoration: underline;
+}
+
+a:not([class]):hover,
+a:not([class]):focus {
+  color: #0958d9;
+  text-decoration: none;
+}
+
+/* Table accessibility */
+.accessible-table th {
+  background-color: #fafafa;
+  font-weight: 600;
+}
+
+.accessible-table th[scope="col"] {
+  text-align: left;
+}
+
+/* Status indicators */
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-indicator::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.status-success {
+  color: #52c41a;
+}
+
+.status-warning {
+  color: #faad14;
+}
+
+.status-error {
+  color: #ff4d4f;
+}
+
+.status-processing {
+  color: #1677ff;
+}
+
+/* Tooltip accessibility */
+.accessible-tooltip {
+  position: relative;
+}
+
+.accessible-tooltip[aria-describedby] {
+  cursor: help;
+}
+
+/* Progress indicators */
+.progress-indicator {
+  position: relative;
+}
+
+.progress-indicator[aria-valuenow] {
+  background: #f5f5f5;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-indicator[aria-valuenow]::after {
+  content: attr(aria-valuenow) '%';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 500;
+  color: #262626;
+}
+
+/* Landmark regions */
+.landmark-main {
+  outline: none;
+}
+
+.landmark-navigation {
+  outline: none;
+}
+
+.landmark-banner {
+  outline: none;
+}
+
+.landmark-contentinfo {
+  outline: none;
+}
+
+/* Error states */
+.error-boundary {
+  padding: 24px;
+  text-align: center;
+  border: 1px solid #ff4d4f;
+  border-radius: 8px;
+  background: #fff2f0;
+}
+
+.error-boundary h2 {
+  color: #ff4d4f;
+  margin-bottom: 16px;
+}
+
+/* Loading states */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.loading-overlay .ant-spin {
+  max-height: none;
+}
+
+/* Responsive text sizing */
+@media (max-width: 768px) {
+  .responsive-text {
+    font-size: 16px; /* Minimum 16px for mobile to prevent zoom */
+  }
+  
+  .btn-mobile {
+    min-height: 44px; /* Touch target size */
+    min-width: 44px;
+  }
+}
+
+/* Dark mode accessibility (if implemented) */
+@media (prefers-color-scheme: dark) {
+  .skip-link {
+    background: #fff;
+    color: #000;
+  }
+  
+  .focus-visible,
+  *:focus-visible {
+    outline-color: #69c0ff;
+  }
+}
+
+/* Modal Container Styles */
+.modal-container-wrap .ant-modal-content {
+  border-radius: 12px;
+  box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 
+              0 3px 6px -4px rgba(0, 0, 0, 0.12), 
+              0 9px 28px 8px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.modal-container-wrap .ant-modal-header {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 16px 24px;
+  background: #fafafa;
+}
+
+.modal-container-wrap .ant-modal-body {
+  padding: 24px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.modal-container-wrap .ant-modal-footer {
+  border-top: 1px solid #f0f0f0;
+  padding: 12px 24px;
+  background: #fafafa;
+}
+
+/* 移动端优化 */
+@media (max-width: 767px) {
+  .modal-container-wrap .ant-modal-content {
+    margin: 16px;
+    border-radius: 8px;
+  }
+  
+  .modal-container-wrap .ant-modal-header,
+  .modal-container-wrap .ant-modal-body,
+  .modal-container-wrap .ant-modal-footer {
+    padding: 16px;
+  }
+  
+  .modal-container-wrap .ant-modal-body {
+    max-height: calc(100vh - 160px);
+  }
+}
+
+/* Print accessibility */
+@media print {
+  .skip-link,
+  .sr-only {
+    display: none !important;
+  }
+  
+  a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 12px;
+    color: #666;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+}

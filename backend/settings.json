@@ -1,0 +1,109 @@
+{
+  "llm_providers": [
+    {
+      "provider": "openai",
+      "api_key": null,
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-3.5-turbo",
+      "enabled": false,
+      "timeout": 60,
+      "max_retries": 3,
+      "retry_delay": 1.0
+    },
+    {
+      "provider": "deepseek",
+      "api_key": "sk-0dc1980d2c264b19bde7da0c209e13dd",
+      "base_url": "https://api.deepseek.com",
+      "model": "deepseek-chat",
+      "enabled": true,
+      "timeout": 60,
+      "max_retries": 3,
+      "retry_delay": 1.0
+    },
+    {
+      "provider": "kimi",
+      "api_key": "sk-v8EMwOjH07p2SUGN4DswMqcsOFLQeHsmkUt8zPdlt1sfK55R",
+      "base_url": "https://api.moonshot.cn",
+      "model": "kimi-k2-0905-preview",
+      "enabled": true,
+      "timeout": 60,
+      "max_retries": 3,
+      "retry_delay": 1.0
+    }
+  ],
+  "default_llm_provider": "deepseek",
+  "ocr_engines": [
+    {
+      "engine": "paddleocr",
+      "enabled": true,
+      "priority": 1,
+      "parameters": {
+        "use_angle_cls": true,
+        "lang": "ch",
+        "use_gpu": false
+      }
+    },
+    {
+      "engine": "mineru",
+      "enabled": true,
+      "priority": 2,
+      "parameters": {
+        "layout_detection": true,
+        "formula_detection": true,
+        "table_detection": true
+      }
+    },
+    {
+      "engine": "alibaba_advanced",
+      "enabled": false,
+      "priority": 3,
+      "parameters": {
+        "output_format": "json",
+        "enable_table": true,
+        "enable_formula": true
+      }
+    }
+  ],
+  "default_ocr_engine": "paddleocr",
+  "system_prompts": [
+    {
+      "name": "academic_question_generation",
+      "description": "学术级别问题生成模板",
+      "template": "基于以下文本内容，生成一个学术水平的问题。问题应该：\n1. 具有一定的深度和复杂性\n2. 需要推理和分析能力\n3. 与文本内容密切相关\n4. 适合Chain-of-Thought回答\n\n文本内容：\n{text_content}\n\n请生成一个高质量的学术问题：",
+      "variables": [
+        "text_content"
+      ],
+      "category": "question_generation",
+      "is_default": true
+    },
+    {
+      "name": "cot_answer_generation",
+      "description": "CoT答案生成模板",
+      "template": "请基于以下问题和文本内容，生成一个Chain-of-Thought格式的答案。\n\n问题：{question}\n\n参考文本：{text_content}\n\n请按照以下格式回答：\n1. 首先分析问题的关键点\n2. 逐步推理和分析\n3. 得出最终答案\n\n答案应该逻辑清晰、推理严密、有理有据。",
+      "variables": [
+        "question",
+        "text_content"
+      ],
+      "category": "answer_generation",
+      "is_default": true
+    },
+    {
+      "name": "knowledge_extraction",
+      "description": "知识抽取模板",
+      "template": "从以下CoT数据中抽取知识图谱信息：\n\n问题：{question}\n答案：{answer}\n\n请识别并抽取：\n1. 实体（人物、地点、概念、事件等）\n2. 关系（实体之间的关联）\n3. 属性（实体的特征和属性）\n\n输出格式为JSON：\n{\n  \"entities\": [{\"name\": \"实体名\", \"type\": \"实体类型\", \"properties\": {}}],\n  \"relations\": [{\"source\": \"源实体\", \"target\": \"目标实体\", \"type\": \"关系类型\"}],\n  \"attributes\": [{\"entity\": \"实体名\", \"attribute\": \"属性名\", \"value\": \"属性值\"}]\n}",
+      "variables": [
+        "question",
+        "answer"
+      ],
+      "category": "knowledge_extraction",
+      "is_default": true
+    }
+  ],
+  "cot_generation": {
+    "candidate_count": 3,
+    "question_max_length": 500,
+    "answer_max_length": 2000,
+    "enable_auto_generation": true,
+    "quality_threshold": 0.7
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "project": {
+    "name": "AI技术研究演示项目",
+    "description": "人工智能技术发展研究的演示项目，包含完整的CoT数据集和知识图谱",
+    "tags": ["AI", "机器学习", "深度学习", "自然语言处理", "演示"],
+    "project_type": "research",
+    "created_at": "2024-01-01T00:00:00Z"
+  },
+  "files": [
+    {
+      "filename": "ai_overview.txt",
+      "content": "人工智能技术发展概述\n\n人工智能（Artificial Intelligence，AI）是计算机科学的一个分支，它企图了解智能的实质，并生产出一种新的能以人类智能相似的方式做出反应的智能机器。\n\n机器学习是人工智能的一个重要分支，它通过算法使计算机能够从数据中学习并做出决策或预测。深度学习是机器学习的一个子集，它使用多层神经网络来模拟人脑的工作方式。\n\n自然语言处理（NLP）是人工智能的另一个重要领域，它致力于让计算机理解、解释和生成人类语言。计算机视觉则专注于让机器能够识别和理解图像和视频内容。",
+      "mime_type": "text/plain"
+    },
+    {
+      "filename": "machine_learning_basics.md",
+      "content": "# 机器学习基础\n\n## 监督学习\n监督学习是机器学习的一种方法，它使用标记的训练数据来学习输入和输出之间的映射关系。常见的监督学习算法包括：\n- 线性回归\n- 逻辑回归\n- 支持向量机（SVM）\n- 决策树\n- 随机森林\n\n## 无监督学习\n无监督学习处理没有标签的数据，目标是发现数据中的隐藏模式。主要方法包括：\n- 聚类分析\n- 主成分分析（PCA）\n- 关联规则学习\n\n## 强化学习\n强化学习是通过与环境交互来学习最优行为策略的方法。智能体通过试错来最大化累积奖励。",
+      "mime_type": "text/markdown"
+    }
+  ],
+  "slices": [
+    {
+      "content": "人工智能（Artificial Intelligence，AI）是计算机科学的一个分支，它企图了解智能的实质，并生产出一种新的能以人类智能相似的方式做出反应的智能机器。",
+      "slice_type": "paragraph",
+      "start_offset": 0,
+      "end_offset": 85,
+      "page_number": 1
+    },
+    {
+      "content": "机器学习是人工智能的一个重要分支，它通过算法使计算机能够从数据中学习并做出决策或预测。",
+      "slice_type": "paragraph", 
+      "start_offset": 86,
+      "end_offset": 130,
+      "page_number": 1
+    },
+    {
+      "content": "深度学习是机器学习的一个子集，它使用多层神经网络来模拟人脑的工作方式。",
+      "slice_type": "paragraph",
+      "start_offset": 131,
+      "end_offset": 165,
+      "page_number": 1
+    },
+    {
+      "content": "自然语言处理（NLP）是人工智能的另一个重要领域，它致力于让计算机理解、解释和生成人类语言。",
+      "slice_type": "paragraph",
+      "start_offset": 166,
+      "end_offset": 210,
+      "page_number": 1
+    }
+  ],
+  "cot_items": [
+    {
+      "question": "什么是人工智能？请详细解释其定义和主要特征。",
+      "candidates": [
+        {
+          "text": "人工智能是计算机科学的一个分支，旨在创造能够模拟人类智能行为的机器系统。",
+          "chain_of_thought": "首先，我需要理解人工智能的基本定义。人工智能（AI）是计算机科学的一个重要分支。其核心目标是创造智能机器，这些机器能够执行通常需要人类智能才能完成的任务。这包括学习、推理、感知、语言理解等能力。AI系统通过算法和数据来模拟人类的认知过程。",
+          "score": 0.95,
+          "chosen": true,
+          "rank": 1
+        },
+        {
+          "text": "AI就是让计算机变得聪明，能够像人一样思考和解决问题。",
+          "chain_of_thought": "这是一个比较简化的解释。虽然核心思想是正确的，但缺乏技术深度。人工智能确实是让计算机具备类似人类的智能能力，但这个定义过于简单，没有涉及到AI的技术实现方式和具体应用领域。",
+          "score": 0.75,
+          "chosen": false,
+          "rank": 2
+        },
+        {
+          "text": "人工智能包括机器学习、深度学习、自然语言处理等多个技术领域。",
+          "chain_of_thought": "这个回答从技术组成的角度来定义AI，提到了几个重要的子领域。机器学习确实是AI的核心技术，深度学习是机器学习的重要分支，自然语言处理是AI的重要应用领域。但这个定义更像是在列举AI的组成部分，而不是解释AI的本质。",
+          "score": 0.80,
+          "chosen": false,
+          "rank": 3
+        }
+      ],
+      "status": "reviewed"
+    },
+    {
+      "question": "机器学习与传统编程有什么区别？",
+      "candidates": [
+        {
+          "text": "传统编程是人工编写规则，而机器学习是让计算机从数据中自动学习规则。",
+          "chain_of_thought": "这是一个很好的对比。在传统编程中，程序员需要明确地编写所有的逻辑规则和处理步骤。而在机器学习中，我们提供数据和期望的输出，让算法自动发现数据中的模式和规律。这种范式转变使得计算机能够处理更复杂、更难以明确定义规则的问题。",
+          "score": 0.90,
+          "chosen": true,
+          "rank": 1
+        },
+        {
+          "text": "机器学习使用算法，传统编程使用代码。",
+          "chain_of_thought": "这个回答有些混淆。实际上，机器学习也需要代码来实现，算法也是通过代码来表达的。区别不在于是否使用算法或代码，而在于解决问题的方式。传统编程是显式地编程，机器学习是通过数据驱动的方式来学习。",
+          "score": 0.60,
+          "chosen": false,
+          "rank": 3
+        },
+        {
+          "text": "机器学习能够处理大数据，传统编程处理小数据。",
+          "chain_of_thought": "这个回答抓住了一个重要方面，即机器学习特别适合处理大规模数据。但这不是最本质的区别。传统编程也可以处理大数据，关键区别在于处理方式：传统编程需要预先定义处理逻辑，而机器学习是从数据中学习处理逻辑。",
+          "score": 0.70,
+          "chosen": false,
+          "rank": 2
+        }
+      ],
+      "status": "approved"
+    }
+  ],
+  "knowledge_graph": {
+    "entities": [
+      {
+        "name": "人工智能",
+        "type": "CONCEPT",
+        "properties": {
+          "definition": "计算机科学的一个分支",
+          "frequency": 15,
+          "confidence": 0.95
+        }
+      },
+      {
+        "name": "机器学习",
+        "type": "CONCEPT", 
+        "properties": {
+          "definition": "人工智能的一个重要分支",
+          "frequency": 12,
+          "confidence": 0.90
+        }
+      },
+      {
+        "name": "深度学习",
+        "type": "CONCEPT",
+        "properties": {
+          "definition": "机器学习的一个子集",
+          "frequency": 8,
+          "confidence": 0.85
+        }
+      },
+      {
+        "name": "自然语言处理",
+        "type": "CONCEPT",
+        "properties": {
+          "definition": "人工智能的重要领域",
+          "frequency": 6,
+          "confidence": 0.80
+        }
+      },
+      {
+        "name": "神经网络",
+        "type": "TECHNOLOGY",
+        "properties": {
+          "definition": "模拟人脑工作方式的计算模型",
+          "frequency": 5,
+          "confidence": 0.85
+        }
+      },
+      {
+        "name": "监督学习",
+        "type": "METHOD",
+        "properties": {
+          "definition": "使用标记数据进行学习的方法",
+          "frequency": 4,
+          "confidence": 0.80
+        }
+      }
+    ],
+    "relationships": [
+      {
+        "source": "机器学习",
+        "target": "人工智能",
+        "type": "IS_PART_OF",
+        "properties": {
+          "confidence": 0.95
+        }
+      },
+      {
+        "source": "深度学习",
+        "target": "机器学习", 
+        "type": "IS_SUBSET_OF",
+        "properties": {
+          "confidence": 0.90
+        }
+      },
+      {
+        "source": "自然语言处理",
+        "target": "人工智能",
+        "type": "IS_PART_OF",
+        "properties": {
+          "confidence": 0.85
+        }
+      },
+      {
+        "source": "深度学习",
+        "target": "神经网络",
+        "type": "USES",
+        "properties": {
+          "confidence": 0.90
+        }
+      },
+      {
+        "source": "监督学习",
+        "target": "机器学习",
+        "type": "IS_TYPE_OF",
+        "properties": {
+          "confidence": 0.85
+        }
+      }
+    ]
+  },
+  "metadata": {
+    "version": "1.0",
+    "created_at": "2024-01-01T00:00:00Z",
+    "description": "COT Studio MVP 演示数据集",
+    "statistics": {
+      "total_files": 2,
+      "total_slices": 4,
+      "total_cot_items": 2,
+      "total_entities": 6,
+      "total_relationships": 5,
+      "avg_candidates_per_question": 3,
+      "annotation_completion_rate": 1.0
+    }
+  }
+}
